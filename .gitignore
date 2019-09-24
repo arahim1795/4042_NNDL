@@ -1,2 +1,6 @@
 Pipfile
 Pipfile.lock
+input/ctg_data_cleaned.csv
+input/fold_*.csv
+input/*_data.csv
+input/admission_predict.csv
