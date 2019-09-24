@@ -2,7 +2,7 @@
 
 4042 Neural Networks and Deep Leaning
 
-**Requirements:**
+## Requirements
 
 1. [Python](https://www.python.org/)
 2. [Pipenv](https://github.com/pypa/pipenv)
@@ -10,7 +10,7 @@
 4. [Matplotlib](https://matplotlib.org/)
 5. [Tensorflow](https://www.tensorflow.org/)
 
-**Setup:**
+## Setup
 
 1. Download and Install Python
 2. Navigate to your Python installation directory and copy path
@@ -31,6 +31,6 @@
 14. Input `pipenv install matplotlib`
 15. Input `pipenv install tensorflow`
 
-**Execution:**
+## Execution
 
 1. To run, input `pipenv run python <file>.py`
