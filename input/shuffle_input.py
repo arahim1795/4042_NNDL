@@ -2,7 +2,7 @@ import math
 import random
 
 # read input from csv file and convert to row and columns
-fid = open("ctg_data_cleaned.csv", "r")
+fid = open("01\ctg_data_cleaned.csv", "r")
 line_input = fid.readlines()
 fid.close()
 
@@ -39,7 +39,7 @@ for idx in range(0, k_fold_number):
     current_file.close()
 
 # read input from csv file and convert to row and columns
-fid = open("admission_predict.csv", "r")
+fid = open("02\admission_predict.csv", "r")
 line_input = fid.readlines()
 fid.close()
 
