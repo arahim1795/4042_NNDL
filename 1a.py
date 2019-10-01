@@ -19,7 +19,7 @@ FEATURE_INPUT = 21
 NUM_CLASSES = 3
 
 learning_rate = 0.01
-epochs = 5000
+epochs = 100000
 batch_size = 32
 num_neurons = 10
 seed = 10
@@ -94,24 +94,24 @@ correct_prediction = tf.cast(
     tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1)), tf.float32)
 accuracy = tf.reduce_mean(correct_prediction)
 
-with tf.Session() as sess:
-    sess.run(tf.global_variables_initializer())
-    train_acc_set, loss_set, test_acc_set = [], [], []
-
-    # TODO: reset weight for each run
-    for i in range(5):
-        train_acc, loss_, test_acc = [], [], []
+train_acc_set, loss_set, test_acc_set = [], [], []
+for i in range(5):
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        train_acc, test_acc = [], []
         for j in range(epochs):
+            # train
             train_op.run(feed_dict={x: X_[i], y_: Y_[i]})
-            train_acc.append(accuracy.eval(feed_dict={x: X_[i], y_: Y_[i]}))
-            if j % 100 == 0:
-                print('iter %d: accuracy %g' % (j, train_acc[j]))
-
-    print(train_acc_set)
-    print('-')
-    print(loss_set)
-    print('-')
-    print(test_acc_set)
+            # evalutation
+            if j % 10000 == 0:
+                train_acc.append(accuracy.eval(feed_dict={x: X_[i], y_: Y_[i]}))
+                test_acc.append(accuracy.eval(feed_dict={x: X_[5], y_: Y_[5]}))
+                print('iter %d: accuracy %g' % (j, train_acc[math.floor(j/10000)]))
+        train_acc_set.append(train_acc)
+        test_acc_set.append(test_acc)
+print(train_acc_set)
+print('-')
+print(test_acc_set)
 
 
 # plot learning curves
