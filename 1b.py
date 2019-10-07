@@ -20,6 +20,7 @@ NUM_CLASSES = 3
 
 learning_rate = 0.01
 epochs = 100000
+batch_size = 32
 num_neurons = 10
 seed = 10
 np.random.seed(seed)
@@ -30,20 +31,21 @@ decay = math.pow(10, -6)
 # index 0-4: train, 5: test
 X_, Y_ = [], []
 
-data = np.genfromtxt('input/A/train_a_data.csv', delimiter=',')
-# process X
-X_.append(data[:, :FEATURE_INPUT])
-X_[0] = scale(X_[0], np.min(X_[0], axis=0), np.max(X_[0], axis=0))
-# process Y
-Y_temp = data[:, -1].astype(int)
-Y_one_hot = np.zeros((Y_temp.shape[0], NUM_CLASSES))
-Y_one_hot[np.arange(Y_temp.shape[0]), Y_temp-1] = 1
-Y_.append(Y_one_hot)
+for i in range(5):
+    data = np.genfromtxt('input/A/fold_' str(i) + '.csv' + , delimiter=',')
+    # process X
+    X_.append(data[:, :FEATURE_INPUT])
+    X_[i] = scale(X_[i], np.min(X_[i], axis=0), np.max(X_[i], axis=0))
+    # process Y
+    Y_temp = data[:, -1].astype(int)
+    Y_one_hot = np.zeros((Y_temp.shape[0], NUM_CLASSES))
+    Y_one_hot[np.arange(Y_temp.shape[0]), Y_temp-1] = 1
+    Y_.append(Y_one_hot)
 
 data = np.genfromtxt('input/A/test_a_data.csv', delimiter=',')
 # process X
 X_.append(data[:, :FEATURE_INPUT])
-X_[1] = scale(X_[1], np.min(X_[1], axis=0), np.max(X_[1], axis=0))
+X_[5] = scale(X_[5], np.min(X_[5], axis=0), np.max(X_[5], axis=0))
 # process Y
 Y_temp = data[:, -1].astype(int)
 Y_one_hot = np.zeros((Y_temp.shape[0], NUM_CLASSES))
