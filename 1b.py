@@ -9,16 +9,18 @@ import pylab as plt
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 # scale data
-def scale(X, X_min, X_max):
-    return (X - X_min)/(X_max-X_min)
+def scale(data):
+    data_scaled = (data- np.mean(data, axis=0))/ np.std(data, axis=0)
+    return data_scaled 
 
 # Parameters
 # - input: LB to Tendency
 FEATURE_INPUT = 8
 
 learning_rate = math.pow(10,-3)
-epochs = 100000
+epochs = 1000
 num_neurons = 10
+batch_size = 64
 seed = 10
 np.random.seed(seed)
 decay = math.pow(10, -3)
@@ -32,6 +34,7 @@ data = np.genfromtxt('input/B/train_b_data.csv', delimiter=',')
 # process X and Y
 X_temp, Y_temp = data[:,:8], data[:,-1]
 Y_temp = Y_temp.reshape(Y_temp.shape[0], 1)
+X_temp = scale(X_temp)
 
 #add to list
 X_.append(X_temp)
@@ -41,6 +44,7 @@ data = np.genfromtxt('input/B/test_b_data.csv', delimiter=',')
 #process X and Y
 X_temp, Y_temp = data[:,:8], data[:,-1]
 Y_temp = Y_temp.reshape(Y_temp.shape[0], 1)
+X_temp = scale(X_temp)
 
 #add to list
 X_.append(X_temp)
@@ -78,7 +82,7 @@ logits = tf.matmul(layer_1_output, layer_final_weights) + layer_final_biases
 loss = tf.reduce_mean(tf.square(y_ - logits))
 regularizer = tf.nn.l2_loss(logits)
 
-# Minimising Loss
+# Minimising Lossz`
 optimizer = tf.train.GradientDescentOptimizer(learning_rate)
 train_op = optimizer.minimize(loss)
 
@@ -92,14 +96,19 @@ with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     train_error_set, test_error_set = [], []
     for i in range(epochs):
-        train_op.run(feed_dict={x: X_[0], y_: Y_[0]})
+        # Batch
+        for start, end in zip(range(0, len(X_[0]), batch_size), range(batch_size, len(X_[0]), batch_size)):
+            if start+batch_size < len(X_[0]):
+                train_op.run(feed_dict={x: X_[0][start:end], y_: Y_[0][start:end]})
+            else: 
+                train_op.run(feed_dict={x: X_[0][start:len(X_[0])], y_: Y_[0][start:len(Y_[0])]})
+
+        # train_op.run(feed_dict={x:X_[0],y_:Y_[0]})
+        
         train_error = loss.eval(feed_dict={x: X_[0], y_: Y_[0]})
         train_error_set.append(train_error)
         test_error = loss.eval(feed_dict={x: X_[1], y_: Y_[1]})
         test_error_set.append(test_error)
-        if i % 100 == 0:
-            print('iter %d: train error %g'%(i, train_error_set[i]))
-            print('iter %d: test error %g'%(i, test_error_set[i]))
 # print(train_acc_set)
 # print('-')
 # print(test_acc_set)
