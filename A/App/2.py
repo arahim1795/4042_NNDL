@@ -149,8 +149,12 @@ test = leave_one_out_dataset(5, dataset)
 #     train_acc, test_acc = [], []
 #     for j in range(epochs):
 #         for i in range(len(batch_X)):
-#             # train
-#             train_op.run(feed_dict={x: batch_X[i], y_: batch_Y[i]})
+#            # Batch train
+#             for start, end in zip(range(0, len(X_[0]), batch_size), range(batch_size, len(X_[0]), batch_size)):
+#                 if start+batch_size < len(X_[0]):
+#                     train_op.run(feed_dict={x: X_[0][start:end], y_: Y_[0][start:end]})
+#                 else: 
+#                     train_op.run(feed_dict={x: X_[0][start:len(X_[0])], y_: Y_[0][start:len(Y_[0])]})
 #             # evalutation
 #             train_acc.append(accuracy.eval(feed_dict={x: batch_X[i], y_: batch_Y[i]}))
 #             # test_acc.append(accuracy.eval(feed_dict={x: X_[1], y_: Y_[1]}))
@@ -158,9 +162,9 @@ test = leave_one_out_dataset(5, dataset)
 #                 print('iter %d: tr-acc %g, te-acc %g' % (j, train_acc[j], test_acc[j]))
 #     train_acc_set.append(train_acc)
 #     test_acc_set.append(test_acc)
-# # print(train_acc_set)
-# # print('-')
-# # print(test_acc_set)
+# print(train_acc_set)
+# print('-')
+# print(test_acc_set)
 
 # # plot learning curves
 # plt.figure(1)
