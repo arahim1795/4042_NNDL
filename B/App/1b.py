@@ -31,7 +31,7 @@ decay = math.pow(10, -3)
 # index 0-4: train, 5: test
 X_, Y_ = [], []
 
-data = np.genfromtxt('input/B/train_b_data.csv', delimiter=',')
+data = np.genfromtxt('../Data/train_data.csv', delimiter=',')
 # process X and Y
 X_temp, Y_temp = data[:,:8], data[:,-1]
 Y_temp = Y_temp.reshape(Y_temp.shape[0], 1)
@@ -41,7 +41,7 @@ X_temp = scale(X_temp)
 X_.append(X_temp)
 Y_.append(Y_temp)
 
-data = np.genfromtxt('input/B/test_b_data.csv', delimiter=',')
+data = np.genfromtxt('../Data/test_data.csv', delimiter=',')
 #process X and Y
 X_temp, Y_temp = data[:,:8], data[:,-1]
 Y_temp = Y_temp.reshape(Y_temp.shape[0], 1)
@@ -51,11 +51,11 @@ X_temp = scale(X_temp)
 X_.append(X_temp)
 Y_.append(Y_temp)
 
-# test_data = list(zip(X_[1],Y_[1]))
-# random.shuffle(test_data)
-# predict_set = test_data[:50]
-# actual_set = test_data[:50]
-
+idx = np.arange(X_[1].shape[0])
+np.random.shuffle(idx)
+prediciton = X_[1][idx]
+actual = Y_[1][idx] 
+actual_set = np.squeeze(np.asarray(actual))
 # for Qn
 # - experiment with small datasets
 # trainX = trainX[:1000]
@@ -96,10 +96,10 @@ correct_prediction = tf.cast(
 accuracy = tf.reduce_mean(correct_prediction)
 
 train_loss_set,test_loss_set = [], []
+prediction_set = []
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     train_error_set, test_error_set = [], []
-    prediction_set,actual = [],[]
 
     for i in range(epochs):
         # Batch
@@ -108,36 +108,34 @@ with tf.Session() as sess:
                 train_op.run(feed_dict={x: X_[0][start:end], y_: Y_[0][start:end]})
             else: 
                 train_op.run(feed_dict={x: X_[0][start:len(X_[0])], y_: Y_[0][start:len(Y_[0])]})
-
-        # train_op.run(feed_dict={x:X_[0],y_:Y_[0]})
-        
+        # calculate loss
         train_error = loss.eval(feed_dict={x: X_[0], y_: Y_[0]})
         train_error_set.append(train_error)
         test_error = loss.eval(feed_dict={x: X_[1], y_: Y_[1]})
         test_error_set.append(test_error)
-    #     prediction_set.append(np.squeeze(y.eval(feed_dict = {x: predict_set})))
-    #     for j in range(prediction_set):
-    #         prediction_set[j] = prediction_set[j] * np.std(prediction_set,axis = 0) + np.mean(prediction_set, axis = 0)
-    # actual = np.squeeze(np.asarray(actual_set))
-        
+    for j in range (50):
+    #predictions
+        prediction_set.append(sess.run(logits,feed_dict={x:prediciton }))
+
 
 # print(train_acc_set)
 # print('-')
 # print(test_acc_set)
 
 # plot learning curves
-plt.figure(1)
-plt.plot(range(epochs), train_error_set, label ='Train Loss')
-plt.plot(range(epochs), test_error_set, label = 'Test Loss')
-plt.xlabel(str(epochs) + ' iterations')
-plt.ylabel('Train/Test Loss')
-plt.legend()
-plt.show()
-
-# plt.figure(2)
-# plt.scatter(range(50), prediction_set[:50])
-# plt.plot(range(50), prediction_set[:50], label="prediction")
-# plt.scatter(range(50), actual[:50])
-# plt.plot(range(50), actual[:50], label="actual")
+# plt.figure(1)
+# plt.plot(range(epochs), train_error_set, label ='Train Loss')
+# plt.plot(range(epochs), test_error_set, label = 'Test Loss')
+# plt.xlabel(str(epochs) + ' iterations')
+# plt.ylabel('Train/Test Loss')
 # plt.legend()
 # plt.show()
+print (prediction_set)
+print(len(prediction_set))
+plt.figure(1)
+plt.scatter(50, prediction_set)
+plt.plot(50, prediction_set, label="prediction")
+plt.scatter(50, actual_set)
+plt.plot(50, actual_set, label="actual")
+plt.legend()
+plt.show()
