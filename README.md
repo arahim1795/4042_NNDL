@@ -1,6 +1,6 @@
 # 4042_NNDL
 
-4042 Neural Networks and Deep Leaning
+4042 Neural Networks and Deep Learning
 
 ## Requirements
 
@@ -9,8 +9,11 @@
 3. [NumPy](https://numpy.org/)
 4. [Matplotlib](https://matplotlib.org/)
 5. [Tensorflow](https://www.tensorflow.org/)
+6. [tqdm](https://tqdm.github.io/)
 
 ## Setup
+
+### Initial
 
 1. Download and Install Python
 2. Navigate to your Python installation directory and copy path
@@ -21,15 +24,18 @@
 6. Input `py -x.x -m pip install --upgrade setuptools`
    1. Replace `x.x` with Python version number (i.e. downloaded: **3.7**.4, x.x: **3.7**)
 7. Input `pip install --user pipenv`
-   1. Copy path presented after successfull installation: _looks like_ `C:\Users\<Username>\AppData\Roaming\Python<Version>\Scripts`
-8. Input abovementioned path into system's path
-9. Minimise _cmd_
-10. Clone/Download project to a desired directory
-11. Copy path to cloned/downloaded project directory after successful clone/download
-12. Input `cd <path to cloned/download project path>`
-13. Input `pipenv install numpy`
-14. Input `pipenv install matplotlib`
-15. Input `pipenv install tensorflow`
+   1. Copy path presented after successful installation: _looks like_ `C:\Users\<Username>\AppData\Roaming\Python<Version>\Scripts`
+8. Input abovementioned path into user's path
+
+### Continued
+
+1. Clone/Download project to a desired directory
+2. Copy path to cloned/downloaded project directory after successful clone/download
+3. Input `cd <path to cloned/download project path>`
+4. Input `pipenv install numpy`
+5. Input `pipenv install matplotlib`
+6. Input `pipenv install tensorflow==1.14`
+7. Input `pipenv install tqdm`
 
 ## Execution
 
