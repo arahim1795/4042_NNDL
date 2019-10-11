@@ -1,6 +1,6 @@
 Pipfile
 Pipfile.lock
-input/A/*
-!input/A/placeholder.md
-input/B/*
-!input/B/placeholder.md
+A/Data/*
+!A/Data/prepare_data.py
+B/Data/*
+!B/Data/prepare_data.py
