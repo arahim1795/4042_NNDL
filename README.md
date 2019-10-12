@@ -8,8 +8,11 @@
 2. [Pipenv](https://github.com/pypa/pipenv)
 3. [NumPy](https://numpy.org/)
 4. [Matplotlib](https://matplotlib.org/)
-5. [Tensorflow](https://www.tensorflow.org/)
-6. [tqdm](https://tqdm.github.io/)
+5. [SciKit-Learn](https://scikit-learn.org/)
+6. [SciPy](https://www.scipy.org/)
+7. [Tensorflow](https://www.tensorflow.org/)
+8. [tqdm](https://tqdm.github.io/)
+
 
 ## Setup
 
@@ -32,10 +35,9 @@
 1. Clone/Download project to a desired directory
 2. Copy path to cloned/downloaded project directory after successful clone/download
 3. Input `cd <path to cloned/download project path>`
-4. Input `pipenv install numpy`
-5. Input `pipenv install matplotlib`
-6. Input `pipenv install tensorflow==1.14`
-7. Input `pipenv install tqdm`
+4. Input `pipenv install numpy scipy matplotlib==3.1.0 scikit-learn`
+5. Input `pipenv install tensorflow==1.14`
+6. Input `pipenv install tqdm colorama`
 
 ## Execution
 
