@@ -20,7 +20,7 @@ def scale(data):
 FEATURE_INPUT = 5
 
 learning_rate = math.pow(10,-3)
-epochs = 10
+epochs = 10000
 num_neurons = 10
 batch_size = 8
 seed = 10
@@ -37,7 +37,6 @@ data = np.genfromtxt('../Data/train_data.csv', delimiter=',')
 # process X and Y
 X_temp, Y_temp = data[:,1:8], data[:,-1]
 Y_temp = Y_temp.reshape(Y_temp.shape[0], 1)
-print(X_temp)
 X_temp = scale(X_temp)
 
 # Remove 2 random variable
@@ -101,10 +100,11 @@ layer_final_biases = tf.Variable(tf.zeros([1]), name='final_biases')
 logits = tf.matmul(layer_1_output, layer_final_weights) + layer_final_biases
 
 # Regularisation (L2)
-loss = tf.square(y_ - logits)
-loss = tf.reduce_mean(loss + (decay*tf.nn.l2_loss(logits)))
+regularization = tf.nn.l2_loss(layer_1_weights) + tf.nn.l2_loss(layer_final_weights)
+loss = tf.reduce_mean(tf.square(y_ - logits))
+l2_loss = tf.reduce_mean(loss + decay*regularization)
 
-# Minimising Lossz`
+# Minimising Loss
 optimizer = tf.train.GradientDescentOptimizer(learning_rate)
 train_op = optimizer.minimize(loss)
 
@@ -128,42 +128,39 @@ accuracy = tf.reduce_mean(correct_prediction)
 #             train_error_set[j].append(train_error)
 #             test_error = loss.eval(feed_dict={x: X_[j], y_: Y_[j]})
 #             test_error_set[j].append(test_error)
+
 for i in range (7):
     for j in range(6):
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
             for k in tqdm(range(epochs)):
                 # Batch
-                for start, end in zip(range(0, len(X_[j]), batch_size), range(batch_size, len(X_[j]), batch_size)):
-                    if start+batch_size < len(X_[j]):
-                        train_op.run(feed_dict={x: X_[j][start:end], y_: Y_[j][start:end]})
+                for start, end in zip(range(0, len(X_[i]), batch_size), range(batch_size, len(X_[i]), batch_size)):
+                    if start+batch_size < len(X_[i]):
+                        train_op.run(feed_dict={x: X_[i][start:end], y_: Y_[i][start:end]})
                     else: 
-                        train_op.run(feed_dict={x: X_[j][start:len(X_[j])], y_: Y_[j][start:len(Y_[j])]})
+                        train_op.run(feed_dict={x: X_[i][start:len(X_[i])], y_: Y_[i][start:len(Y_[i])]})
                 # calculate loss
-                train_error = loss.eval(feed_dict={x: X_[j], y_: Y_[j]})
-                train_error_set.append(train_error)
-                test_error = loss.eval(feed_dict={x: X_[j], y_: Y_[j]})
-                test_error_set.append(test_error)
+                train_error_set[i][j].append(loss.eval(feed_dict={x: X_[i], y_: Y_[i]}))
+                test_error_set[i][j].append(loss.eval(feed_dict={x: X_[i+42], y_: Y_[i+42]}))
 # print(train_acc_set)
 # print('-')
 # print(test_acc_set)
 
-print(train_error_set)
-
-# plot learning curves
 plt.figure(1)
-for i in range(6):
-    plt.plot(range(epochs), train_error_set[i], label ='Train Loss on removing column'+str(i))
+# plot learning curves
+for i in range(7):
+    for j in range(6):
+        plt.plot(range(epochs), train_error_set[i][j], label ='Train Loss on removing column'+str(i) + "/"+str(j))
 plt.xlabel(str(epochs) + ' iterations')
 plt.ylabel('Train Loss')
-plt.ylim(0,0.01)
 plt.legend()
 
 plt.figure(2)
-for i in range(6):
-    plt.plot(range(epochs), test_error_set[i], label = 'Test Loss on removing column'+str(i))
+for i in range(7):
+    for j in range(6):
+        plt.plot(range(epochs), test_error_set[i][j], label = 'Test Loss on removing column'+str(i) + "/"+str(j))
 plt.xlabel(str(epochs) + ' iterations')
 plt.ylabel('Test Loss')
-plt.ylim(0,0.01)
 plt.legend()
 plt.show()

@@ -113,32 +113,31 @@ accuracy = tf.reduce_mean(correct_prediction)
 #             test_error = loss.eval(feed_dict={x: X_[j], y_: Y_[j]})
 #             test_error_set[j].append(test_error)
 train_error_set,test_error_set = [[],[],[],[],[],[],[],[]], [[],[],[],[],[],[],[],[]]
-for j in range(7):
+for i in range(7):
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        for i in tqdm(range(epochs)):
+        for j in tqdm(range(epochs)):
             # Batch
-            for start, end in zip(range(0, len(X_[j]), batch_size), range(batch_size, len(X_[j]), batch_size)):
-                if start+batch_size < len(X_[j]):
-                    train_op.run(feed_dict={x: X_[j][start:end], y_: Y_[j][start:end]})
+            for start, end in zip(range(0, len(X_[i]), batch_size), range(batch_size, len(X_[i]), batch_size)):
+                if start+batch_size < len(X_[i]):
+                    train_op.run(feed_dict={x: X_[i][start:end], y_: Y_[i][start:end]})
                 else: 
-                    train_op.run(feed_dict={x: X_[j][start:len(X_[j])], y_: Y_[j][start:len(Y_[j])]})
+                    train_op.run(feed_dict={x: X_[i][start:len(X_[i])], y_: Y_[i][start:len(Y_[i])]})
             # calculate loss
-            train_error = accuracy.eval(feed_dict={x: X_[j], y_: Y_[j]})
-            train_error_set[j].append(train_error)
-            test_error = accuracy.eval(feed_dict={x: X_[j], y_: Y_[j]})
-            test_error_set[j].append(test_error)
+            train_error = l2_loss.eval(feed_dict={x: X_[i], y_: Y_[i]})
+            train_error_set[i].append(train_error)
+            test_error = l2_loss.eval(feed_dict={x: X_[i], y_: Y_[i]})
+            test_error_set[i].append(test_error)
 # print(train_acc_set)
 # print('-')
 # print(test_acc_set)
-
 # plot learning curves
 plt.figure(1)
 for i in range(7):
     plt.plot(range(epochs), train_error_set[i], label ='Train Loss on removing column'+str(i))
 plt.xlabel(str(epochs) + ' iterations')
 plt.ylabel('Train Loss')
-plt.ylim(0,0.01)
+plt.ylim(0,0.03)
 plt.legend()
 
 plt.figure(2)
@@ -146,6 +145,6 @@ for i in range(7):
     plt.plot(range(epochs), test_error_set[i], label = 'Test Loss on removing column'+str(i))
 plt.xlabel(str(epochs) + ' iterations')
 plt.ylabel('Test Loss')
-plt.ylim(0,0.01)
+plt.ylim(0,0.03)
 plt.legend()
 plt.show()
