@@ -15,11 +15,11 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 FEATURE_INPUT = 21  # input: LB to Tendency
 NUM_CLASSES = 3  # NSP = 1, 2, 3
 
-batches = [4, 8, 16, 32, 64]
-decay = math.pow(10, -6)
+batch = 32
+decay = [0, math.pow(10, -3), math.pow(10, -6), math.pow(10, -9), math.pow(10, -12)]
 epochs = 20000
 learning_rate = 0.01
-num_neurons = 10
+num_neurons = 15
 
 k_value = 5
 
@@ -123,7 +123,7 @@ def randomise_order(dataset):
     return dataset
 
 
-def nn_model(batched_train_data, train_data, test_data):
+def nn_model(batched_train_data, train_data, test_data, decay):
     # * Create Model
     x = tf.placeholder(tf.float32, [None, FEATURE_INPUT])
     y_ = tf.placeholder(tf.float32, [None, NUM_CLASSES])
@@ -202,29 +202,30 @@ def nn_model(batched_train_data, train_data, test_data):
 
 def export_data(acc, epochs):
     # * Export Accuracies
-    with open("../Out/2_optimal.csv", "w") as f:
+    with open("../Out/4_optimal.csv", "w") as f:
         f.write("iter,tr-acc,te-acc\n")
         for j in range(0, epochs):
             f.write("%s,%s,%s\n" % (str(j), acc[0][j], acc[1][j]))
 
     # * Plotting
-    plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(16, 8))
     fig = plt.figure(1)
     plt.plot(range(epochs), acc[0], label="Train Accuracy", color="#ff0000")
     plt.plot(range(epochs), acc[1], label="Test Accuracy", color="#00ffff")
     plt.xlabel(str(epochs) + " iterations")
     plt.ylabel("Train/Test accuracy")
     plt.legend()
-    fig.savefig("../Out/2_optimal_fig.png")
+    fig.savefig("../Out/4_optimal_fig.png")
     plt.close()
 
 
-def export_data_batch(acc, batches, k_value, epochs):
+def export_data_decay(acc, k_value, epochs):
 
-    zipped_batch_num = []
-    for i in range(len(batches)):
+    extracted_decay = [0, 3, 6, 9, 12]
+    zipped_decay = []
+    for i in range(len(extracted_decay)):
         for j in range(k_value):
-            zipped_batch_num.append(batches[i])
+            zipped_decay.append(extracted_decay[i])
 
     for i in range(0, len(acc), 5):
         #  mean validation
@@ -248,20 +249,20 @@ def export_data_batch(acc, batches, k_value, epochs):
         mean_test = np.divide(mean_test, 5.0)
 
         # export accuracies
-        with open("../Out/2_b" + str(zipped_batch_num[i]) + ".csv", "w") as f:
+        with open("../Out/4_d" + str(zipped_decay[i]) + ".csv", "w") as f:
             f.write("iter,tr-acc,te-acc\n")
             for j in range(0, epochs):
                 f.write("%s,%s,%s\n" % (str(j), mean_train[j], mean_test[j]))
 
         # plotting
-        fig = plt.figure(1, figsize=(10, 8))
+        fig = plt.figure(1, figsize=(16, 8))
         plt.plot(range(epochs), mean_train, label="mean_train", color="#ff0000")
         plt.plot(range(epochs), mean_test, label="mean_test", color="#00ffff")
 
         plt.xlabel(str(epochs) + " iterations")
         plt.ylabel("Train/Test accuracy")
         plt.legend()
-        fig.savefig("../Out/2_b" + str(zipped_batch_num[i]) + ".png")
+        fig.savefig("../Out/4_d" + str(zipped_decay[i]) + ".png")
         plt.close()
 
 
@@ -281,25 +282,32 @@ def main():
 
     # batching
     batch_train_set = []
-    for i in batches:
+    for i in range(len(decay)):
         for j in range(k_value):
-            batch_train_set.append(process_data_batch(k_train_data[j], i))
+            batch_train_set.append(process_data_batch(k_train_data[j], batch))
 
     # copy data for zipping
     copy_train = k_train_data
     copy_test = k_test_data
-    for i in range(len(batches) - 1):
+    for i in range(len(decay) - 1):
         k_train_data += copy_train
         k_test_data += copy_test
 
+    zipped_decay = []
+    for i in range(len(decay)):
+        for j in range(k_value):
+            zipped_decay.append(decay[i])
+
     # * Execution (K-Fold)
-    # acc = p.starmap(nn_model, zip(batch_train_set, k_train_data, k_test_data))
+    acc = p.starmap(
+        nn_model, zip(batch_train_set, k_train_data, k_test_data, zipped_decay)
+    )
 
-    # export_data_batch(acc, batches, k_value, epochs)
+    export_data_decay(acc, k_value, epochs)
 
-    # * Optimal Batch (size = 32)
+    # * Optimal Decay (10^-3)
     # * Data Handling
-    optimal_size = 32
+    optimal_decay = math.pow(10, -3)
     test_file = "../Data/test_data.csv"
 
     # import train data
@@ -308,10 +316,10 @@ def main():
     # import test data
     test_30 = process_data(test_file)
 
-    optimal_batches_data = process_data_batch(train_70, optimal_size)
+    optimal_batches_data = process_data_batch(train_70, batch)
 
     # * Execution (Optimal Size)
-    optimal_acc = nn_model(optimal_batches_data, train_70, test_30)
+    optimal_acc = nn_model(optimal_batches_data, train_70, test_30, optimal_decay)
 
     export_data(optimal_acc, epochs)
 
