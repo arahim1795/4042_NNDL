@@ -6,6 +6,7 @@ import numpy as np
 import operator
 from sklearn.model_selection import KFold
 from sklearn.utils import gen_batches
+import time
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
@@ -151,11 +152,12 @@ def nn_model(train_data, test_data, batch_size):
     accuracy = tf.reduce_mean(correct_prediction)
 
     # * Run Model
-    train_acc, test_acc = [], []
+    train_acc, test_acc, per_epoch_time = [], [], []
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         for i in range(epochs):
+            start_time = time.time()
             # batching
             batched_data = process_data_batch(train_data, batch_size)
 
@@ -176,12 +178,14 @@ def nn_model(train_data, test_data, batch_size):
 
             # randomise dataset
             train_data = randomise_order(train_data)
+            per_epoch_time.append(time.time() - start_time)
 
-    acc = []
-    acc.append(train_acc)
-    acc.append(test_acc)
+    data = []
+    data.append(train_acc)
+    data.append(test_acc)
+    data.append(per_epoch_time)
 
-    return acc
+    return data
 
 
 def export_data(acc):
@@ -203,34 +207,47 @@ def export_data(acc):
     plt.close()
 
 
-def export_data_batch(accs, zipped_batch_size):
+def export_data_batch(data, zipped_batch_size):
 
-    for i in range(0, len(accs), 5):
+    for i in range(0, len(data), 5):
         #  mean cross-validation
         mean_train = (
-            np.array(accs[i][0])
-            + np.array(accs[i + 1][0])
-            + np.array(accs[i + 2][0])
-            + np.array(accs[i + 3][0])
-            + np.array(accs[i + 4][0])
+            np.array(data[i][0])
+            + np.array(data[i + 1][0])
+            + np.array(data[i + 2][0])
+            + np.array(data[i + 3][0])
+            + np.array(data[i + 4][0])
         )
 
         mean_test = (
-            np.array(accs[i][1])
-            + np.array(accs[i + 1][1])
-            + np.array(accs[i + 2][1])
-            + np.array(accs[i + 3][1])
-            + np.array(accs[i + 4][1])
+            np.array(data[i][1])
+            + np.array(data[i + 1][1])
+            + np.array(data[i + 2][1])
+            + np.array(data[i + 3][1])
+            + np.array(data[i + 4][1])
+        )
+
+        mean_time = (
+            np.array(data[i][2])
+            + np.array(data[i + 1][2])
+            + np.array(data[i + 2][2])
+            + np.array(data[i + 3][2])
+            + np.array(data[i + 4][2])
         )
 
         mean_train = np.divide(mean_train, 5.0)
         mean_test = np.divide(mean_test, 5.0)
+        mean_time = np.divide(mean_time, 5.0)
+        # print(len(mean_time))
 
         # export accuracies
         with open("../Out/2_b" + str(zipped_batch_size[i]) + ".csv", "w") as f:
             f.write("iter,tr-acc,te-acc\n")
             for j in range(0, epochs):
-                f.write("%s,%s,%s\n" % (str(j), mean_train[j], mean_test[j]))
+                f.write(
+                    "%s,%s,%s,%s\n"
+                    % (str(j), mean_train[j], mean_test[j], mean_time[j])
+                )
 
         # plotting
         fig = plt.figure(figsize=(16, 8))
@@ -243,51 +260,55 @@ def export_data_batch(accs, zipped_batch_size):
         fig.savefig("../Out/2_b" + str(zipped_batch_size[i]) + ".png")
         plt.close()
 
-    # * get max test per fold
-
-    max_accs, all_data = [], []
+    # get max mean time
+    max_times = []
     for j in range(5):
-        max_test_acc = []
+        max_time = []
         for i in range(5):
-            data = []
+            data_time = []
             index, value = max(
-                enumerate(accs[i + (5 * j)][1]), key=operator.itemgetter(1)
+                enumerate(data[i + (5 * j)][2]), key=operator.itemgetter(1)
             )
-            data.append(i + (5 * j))
-            data.append(index)
-            data.append(value)
-            max_test_acc.append(data)
+            data_time.append(i + (5 * j))
+            data_time.append(value)
+            max_time.append(data_time)
 
-        max_acc_batch = []
-        set_num, index, value = max(max_test_acc, key=lambda x: x[2])
-        max_acc_batch.append(accs[set_num][0][index])
-        max_acc_batch.append(value)
-        max_accs.append(np.array(max_acc_batch))
-        max_acc_batch = []
-        max_acc_batch.append(set_num)
-        max_acc_batch.append(index)
-        max_acc_batch.append(accs[set_num][0][index])
-        max_acc_batch.append(value)
-        all_data.append(np.array(max_acc_batch))
-
-    max_train = np.delete(max_accs, 1, 1)
-    max_test = np.delete(max_accs, 0, 1)
+        max_time_batch = []
+        set_num, value = max(max_time, key=lambda x: x[1])
+        max_time_batch.append(value)
+        max_times.append(np.array(max_time_batch))
 
     fig = plt.figure(figsize=(16, 8))
-    plt.plot(batches, max_train, label="max_train", color="#ff0000")
-    plt.plot(batches, max_test, label="max_test", color="#00ffff")
+    plt.plot(batches, max_times, label="time", color="#ff0000")
     plt.xticks(batches)
     plt.legend()
-    fig.savefig("../Out/2_max.png")
+    fig.savefig("../Out/2_max_time.png")
     plt.close()
 
-    with open("../Out/2_max.csv", "w") as f:
-        f.write("batch,index,tr-acc,te-acc\n")
-        for i in range(len(all_data)):
-            f.write(
-                "%s,%s,%s,%s\n"
-                % (str(batches[i]), all_data[i][1], all_data[i][2], all_data[i][3])
-            )
+    with open("../Out/2_max_time.csv", "w") as f:
+        f.write("batch,time\n")
+        for i in range(len(max_times)):
+            f.write("%s,%s\n" % (str(batches[i]), max_times[i]))
+
+    # * get mean time per batch
+    max_mean_time = []
+    for i in range(5):
+        data = []
+        index, value = max(enumerate(mean_time), key=operator.itemgetter(1))
+        data.append(value)
+        max_mean_time.append(np.array(data))
+
+    fig = plt.figure(figsize=(16, 8))
+    plt.plot(batches, max_mean_time, label="mean_time", color="#ff0000")
+    plt.xticks(batches)
+    plt.legend()
+    fig.savefig("../Out/2_mean_times.png")
+    plt.close()
+
+    with open("../Out/2_mean_times.csv", "w") as f:
+        f.write("batch,time\n")
+        for i in range(len(max_mean_time)):
+            f.write("%s,%s\n" % (str(batches[i]), max_mean_time[i]))
 
 
 def main():
