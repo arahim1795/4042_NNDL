@@ -6,8 +6,8 @@ import math
 import tensorflow as tf
 import numpy as np
 import pylab as plt
-import pandas
 from tqdm import tqdm
+import pandas
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 

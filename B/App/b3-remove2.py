@@ -40,17 +40,14 @@ Y_temp = Y_temp.reshape(Y_temp.shape[0], 1)
 X_temp = scale(X_temp)
 
 # Remove 2 random variable
-for i in range(7):
-    # remove 1 column
-    # np delete removes the n row/column(depends on 3rd item)
-    X_remove1 = np.delete(X_temp,i,1)
+# remove 1 column
+# np delete removes the n row/column(depends on 3rd item)
+X_remove1 = np.delete(X_temp,6,1)
+for i in range(6):
+    X_remove2 = np.delete(X_remove1,i,1)
+    X_.append(X_remove2)
+    Y_.append(Y_temp)
     train_error_set.append([])
-    for j in range(6):
-        X_remove2 = np.delete(X_remove1,j,1)
-        X_.append(X_remove2)
-        Y_.append(Y_temp)
-        count +=1
-        train_error_set[i].append([])
 
 data = np.genfromtxt('../Data/test_data.csv', delimiter=',')
 #process X and Y
@@ -59,25 +56,14 @@ Y_temp = Y_temp.reshape(Y_temp.shape[0], 1)
 X_temp = scale(X_temp)
 
 # Remove 2 random variable
-for i in range(7):
-    # remove 1 column
-    # np delete removes the n row/column(depends on 3rd item)
-    X_remove1 = np.delete(X_temp,i,1)
+# remove 1 column
+# np delete removes the n row/column(depends on 3rd item)
+X_remove1 = np.delete(X_temp,6,1)
+for j in range(6):
+    X_remove2 = np.delete(X_remove1,j,1)
+    X_.append(X_remove2)
+    Y_.append(Y_temp)
     test_error_set.append([])
-    for j in range(6):
-        X_remove2 = np.delete(X_remove1,j,1)
-        X_.append(X_remove2)
-        Y_.append(Y_temp)
-        count +=1
-        test_error_set[i].append([])
-
- 
-# for Qn
-# - experiment with small datasets
-# trainX = trainX[:1000]
-# trainY = trainY[:1000]
-
-# n = trainX.shape[0]
 
 # Graph Start
 
@@ -112,54 +98,34 @@ correct_prediction = tf.cast(
     tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1)), tf.float32)
 accuracy = tf.reduce_mean(correct_prediction)
 
-# with tf.Session() as sess:
-#     sess.run(tf.global_variables_initializer())
-#     train_error_set,test_error_set = [[],[],[],[],[],[],[],[]], [[],[],[],[],[],[],[],[]]
-#     for i in tqdm(range(epochs)):
-#         for j in range(8):
-#             # Batch
-#             for start, end in zip(range(0, len(X_[j]), batch_size), range(batch_size, len(X_[j]), batch_size)):
-#                 if start+batch_size < len(X_[j]):
-#                     train_op.run(feed_dict={x: X_[j][start:end], y_: Y_[j][start:end]})
-#                 else: 
-#                     train_op.run(feed_dict={x: X_[j][start:len(X_[j])], y_: Y_[j][start:len(Y_[j])]})
-#             # calculate loss
-#             train_error = loss.eval(feed_dict={x: X_[j], y_: Y_[j]})
-#             train_error_set[j].append(train_error)
-#             test_error = loss.eval(feed_dict={x: X_[j], y_: Y_[j]})
-#             test_error_set[j].append(test_error)
-
-for i in range (7):
-    for j in range(6):
-        with tf.Session() as sess:
-            sess.run(tf.global_variables_initializer())
-            for k in tqdm(range(epochs)):
-                # Batch
-                for start, end in zip(range(0, len(X_[i]), batch_size), range(batch_size, len(X_[i]), batch_size)):
-                    if start+batch_size < len(X_[i]):
-                        train_op.run(feed_dict={x: X_[i][start:end], y_: Y_[i][start:end]})
-                    else: 
-                        train_op.run(feed_dict={x: X_[i][start:len(X_[i])], y_: Y_[i][start:len(Y_[i])]})
-                # calculate loss
-                train_error_set[i][j].append(loss.eval(feed_dict={x: X_[i], y_: Y_[i]}))
-                test_error_set[i][j].append(loss.eval(feed_dict={x: X_[i+42], y_: Y_[i+42]}))
+for i in range(6):
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        for k in tqdm(range(epochs)):
+            # Batch
+            for start, end in zip(range(0, len(X_[i]), batch_size), range(batch_size, len(X_[i]), batch_size)):
+                if start+batch_size < len(X_[i]):
+                    train_op.run(feed_dict={x: X_[i][start:end], y_: Y_[i][start:end]})
+                else: 
+                    train_op.run(feed_dict={x: X_[i][start:len(X_[i])], y_: Y_[i][start:len(Y_[i])]})
+            # calculate loss
+            train_error_set[i].append(loss.eval(feed_dict={x: X_[i], y_: Y_[i]}))
+            test_error_set[i].append(loss.eval(feed_dict={x: X_[i+6], y_: Y_[i+6]}))
 # print(train_acc_set)
 # print('-')
 # print(test_acc_set)
 
 plt.figure(1)
 # plot learning curves
-for i in range(7):
-    for j in range(6):
-        plt.plot(range(epochs), train_error_set[i][j], label ='Train Loss on removing column'+str(i) + "/"+str(j))
+for i in range(6):
+    plt.plot(range(epochs), train_error_set[i], label ='Train Loss on removing column'+str(i))
 plt.xlabel(str(epochs) + ' iterations')
 plt.ylabel('Train Loss')
 plt.legend()
 
 plt.figure(2)
-for i in range(7):
-    for j in range(6):
-        plt.plot(range(epochs), test_error_set[i][j], label = 'Test Loss on removing column'+str(i) + "/"+str(j))
+for i in range(6):
+    plt.plot(range(epochs), test_error_set[i], label = 'Test Loss on removing column'+str(i))
 plt.xlabel(str(epochs) + ' iterations')
 plt.ylabel('Test Loss')
 plt.legend()
