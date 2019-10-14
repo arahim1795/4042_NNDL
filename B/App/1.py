@@ -13,7 +13,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 FEATURE_INPUT = 7
 
 learning_rate = math.pow(10, -3)
-epochs = 1000
+epochs = 10000
 num_neurons = 10
 batch_size = 8
 seed = 10
@@ -148,6 +148,7 @@ def nn_model(train_data, test_data, predict_train_data):
     errors.append(test_error_set)
 
     dataset.append(prediction_set)
+    dataset.append(predict_train_data[1])
     dataset.append(errors)
 
     return dataset
@@ -156,22 +157,31 @@ def nn_model(train_data, test_data, predict_train_data):
 # TODO: complete this stuff
 def export_data(dataset):
 
+     # * Export Accuracies
+    file = open("../Out/1-accuracy.csv","w") 
+    with open("../Out/1-accuracy.csv", "w") as f:
+        f.write("iter,tr-acc,te-acc\n")
+        for i in range(0, epochs,250):
+            f.write("%s,%s,%s\n" % (str(i), str(dataset[2][0][i]), str(dataset[2][1][i])))
+
     # TODO: export to csv, png (16 x 8)
-    plt.figure(1)
-    plt.plot(range(epochs), train_error_set, label="Train Loss")
-    plt.plot(range(epochs), test_error_set, label="Test Loss")
+    fig1 = plt.figure(1)
+    plt.plot(range(epochs), dataset[2][0], label="Train Loss")
+    plt.plot(range(epochs), dataset[2][1], label="Test Loss")
     plt.xlabel(str(epochs) + " iterations")
     plt.ylabel("Train/Test Loss")
     plt.legend()
+    fig1.savefig("../Out/1_a.png")
 
-    plt.figure(2)
-    plt.scatter(range(50), prediction_set[0:50])
-    plt.plot(range(50), prediction_set[0:50], label="prediction")
-    plt.scatter(range(50), actual_set[0:50])
-    plt.plot(range(50), actual_set[0:50], label="actual")
+    fig2 = plt.figure(2)
+    plt.scatter(range(50), dataset[0][0:50])
+    plt.plot(range(50), dataset[0][0:50], label="prediction")
+    plt.scatter(range(50), dataset[1][0:50])
+    plt.plot(range(50), dataset[1][0:50], label="actual")
     plt.xlabel("Predicition Number")
     plt.ylabel("Admission chance")
     plt.legend()
+    fig2.savefig("../Out/1_b.png")
 
 
 # * Data Handler

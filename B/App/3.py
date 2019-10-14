@@ -45,10 +45,11 @@ def process_data(file):
 
 
 def process_drop_data(data):
-    
-    # TODO: return 7 set of train_data, test data
-
-    return dropped_train, dropped_test
+    dropped_data = [[],[]]
+    dropped_data[1] = data[1]
+    for i in range(7):
+        dropped_data[0] = np.delete(data[0],i,1)
+    return dropped_data
 
 
 def randomise_data(data):
@@ -132,7 +133,6 @@ def nn_model(train_data, test_data, FEATURE_INPUT):
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         train_error_set, test_error_set = [], []
-
         for i in tqdm(range(epochs)):
             batched_train_data = process_data_batch(train_data, batch_size)
             # batch train
@@ -155,62 +155,76 @@ def nn_model(train_data, test_data, FEATURE_INPUT):
     return errors
 
 
-# TODO: complete this stuff
 def export_data(dataset):
 
+     # * Export Accuracies
+    file = open("../Out/1-accuracy.csv","w") 
+    with open("../Out/1-accuracy.csv", "w") as f:
+        f.write("iter,tr-acc,te-acc\n")
+        for i in range(0, epochs,250):
+            f.write("%s,%s,%s\n" % (str(i), str(dataset[2][0][i]), str(dataset[2][1][i])))
+
     # TODO: export to csv, png (16 x 8)
-    plt.figure(1)
-    plt.plot(range(epochs), train_error_set, label="Train Loss")
-    plt.plot(range(epochs), test_error_set, label="Test Loss")
+    fig1 = plt.figure(1)
+    plt.plot(range(epochs), dataset[2][0], label="Train Loss")
+    plt.plot(range(epochs), dataset[2][1], label="Test Loss")
     plt.xlabel(str(epochs) + " iterations")
     plt.ylabel("Train/Test Loss")
     plt.legend()
+    fig1.savefig("../Out/3_a.png")
 
-    plt.figure(2)
-    plt.scatter(range(50), prediction_set[0:50])
-    plt.plot(range(50), prediction_set[0:50], label="prediction")
-    plt.scatter(range(50), actual_set[0:50])
-    plt.plot(range(50), actual_set[0:50], label="actual")
+    fig2 = plt.figure(2)
+    plt.scatter(range(50), dataset[0][0:50])
+    plt.plot(range(50), dataset[0][0:50], label="prediction")
+    plt.scatter(range(50), dataset[1][0:50])
+    plt.plot(range(50), dataset[1][0:50], label="actual")
     plt.xlabel("Predicition Number")
     plt.ylabel("Admission chance")
     plt.legend()
+    fig2.savefig("../Out/3_b.png")
+
+def main():
+    # * Set Up Multiprocessing
+    num_threads = mp.cpu_count() - 1
+    p = mp.Pool(processes=num_threads)
+
+    # * Data Handler
+    file_train = "../Data/train_data.csv"
+    file_test = "../Data/test_data.csv"
+
+    train_data = process_data(file_train)
+    test_data = process_data(file_test)
+
+    # TODO: drop one column (x7)
+    drop_one_train = process_drop_data(train_data)
+    drop_one_test = process_drop_data(test_data)
+
+    feature_array = [] 
+    for i in range(FEATURE_INPUT[0]+1):
+        feature_array.append(FEATURE_INPUT[0])
+
+    # * Execution (Multiprocessing x 7)
+    errors = p.starmap(nn_model, zip(drop_one_train, drop_one_test, feature_array))
+
+    export_data(errors)
+
+    # * Data Handler
+
+    # TODO: drop worst feature from test_data, train_data
+
+    # TODO: drop one column (x6)
+    drop_two_train = process_drop_data(drop_one_train[5])
+    drop_two_test = process_drop_data(drop_one_test[5])
+
+    feature_array = [] 
+    for i in range(FEATURE_INPUT[1]+1):
+        feature_array.append(FEATURE_INPUT[1])
 
 
-# * Set Up Multiprocessing
-num_threads = mp.cpu_count - 1
-p = mp.Pool(processes=num_threads)
+    # * Execution (Multiprocessing x 6)
+    errors = p.starmap(nn_model, zip(drop_two_train, drop_two_test, feature_array))
 
-# * Data Handler
-file_train = "../Data/train_data.csv"
-file_test = "../Data/test_data.csv"
+    export_data(errors)
 
-train_data = process_data(file_train)
-test_data = process_data(file_test)
-
-# TODO: drop one column (x7)
-
-feature_array = [] 
-for i in range(FEATURE_INPUT[0]+1):
-    feature_array.append(FEATURE_INPUT[0])
-
-
-# * Execution (Multiprocessing x 7)
-errors = p.starmap(nn_model, zip(dropped_train, dropped_test, feature_array))
-
-export_data(errors)
-
-# * Data Handler
-
-# TODO: drop worst feature from test_data, train_data
-
-# TODO: drop one column (x6)
-
-feature_array = [] 
-for i in range(FEATURE_INPUT[1]+1):
-    feature_array.append(FEATURE_INPUT[1])
-
-
-# * Execution (Multiprocessing x 6)
-errors = p.starmap(nn_model, zip(dropped_train, dropped_test, feature_array))
-
-export_data(errors)
+if __name__ == "__main__":
+    main()

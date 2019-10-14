@@ -86,7 +86,6 @@ def nn_model(
     loss = tf.reduce_mean(cross_entropy)
 
     loss = tf.reduce_mean(loss + (decay*tf.nn.l2_loss(logits)))
-
     # minimise loss
     optimizer = tf.train.GradientDescentOptimizer(learning_rate)
     train_op = optimizer.minimize(loss)
