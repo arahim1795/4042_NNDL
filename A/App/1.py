@@ -1,18 +1,25 @@
 import math
 import matplotlib.pylab as plt
 import numpy as np
-import random
 import tensorflow as tf
 from tqdm import tqdm
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
+# hyper-parameters
+seed = 291
+np.random.seed(seed)
 
-def test():
-    return 1
+FEATURE_INPUT = 21  # input: LB to Tendency
+NUM_CLASSES = 3  # NSP = 1, 2, 3
+
+learning_rate = 0.01
+epochs = 100000
+num_neurons = 10
+decay = math.pow(10, -6)
 
 
-# * Functions
+# functions
 def scale(X, X_min, X_max):
     return (X - X_min) / (X_max - X_min)
 
@@ -41,34 +48,20 @@ def process_data(file):
 
 
 def randomise_order(dataset):
-    # parameters
-    randomised_data = []
+    # generate indexes
+    indexes = np.arange(len(dataset[0]))
 
-    # column-wise combine data
-    combined_data = np.concatenate((dataset[0], dataset[1]), axis=1)
+    # randomise indexes
+    np.random.shuffle(indexes)
 
-    # randomise data
-    random.seed(291)
-    random.shuffle(combined_data)
+    # randomise dataset order
+    dataset[0] = dataset[0][indexes]
+    dataset[1] = dataset[1][indexes]
 
-    # append split randomised data to list
-    randomised_data.append(combined_data[:, :FEATURE_INPUT])
-    randomised_data.append(combined_data[:, FEATURE_INPUT:])
-
-    return randomised_data
+    return dataset
 
 
-def nn_model(
-    train_data,
-    test_data,
-    num_features,
-    num_classes,
-    learning_rate,
-    epochs,
-    num_neurons,
-    decay,
-):
-    # * Create Model
+def nn_model(train_data, test_data):
     x = tf.placeholder(tf.float32, [None, FEATURE_INPUT])
     y_ = tf.placeholder(tf.float32, [None, NUM_CLASSES])
 
@@ -109,8 +102,8 @@ def nn_model(
     )
     accuracy = tf.reduce_mean(correct_prediction)
 
-    # * Run Model
-    train_acc, test_acc = [], []
+    # execute
+    accs, train_acc, test_acc = [], [], []
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
@@ -129,49 +122,42 @@ def nn_model(
             # randomise order
             train_data = randomise_order(train_data)
 
-    # * Export Accuracies
-    with open("../Out/1-accuracy.csv", "w") as f:
-        f.write("iter,tr-acc,te-acc\n")
-        for i in range(0, epochs, 250):
-            f.write("%s,%s,%s\n" % (str(i), str(train_acc[i]), str(test_acc[i])))
+    accs.append(train_acc)
+    accs.append(test_acc)
 
-    # * Plotting
-    fig = plt.figure(1)
-    plt.plot(range(epochs), train_acc, label="Train Accuracy")
-    plt.plot(range(epochs), test_acc, label="Test Accuracy")
+    return accs
+
+
+def export_data(accs):
+    # export values
+    with open("../Out/1_accuracy.csv", "w") as f:
+        f.write("iter,tr-acc,te-acc\n")
+        for i in range(0, epochs):
+            f.write("%s,%s,%s\n" % (str(i), str(accs[0][i]), str(accs[1][i])))
+
+    # plotting
+    fig = plt.figure(figsize=(18, 8))
+    plt.plot(range(epochs), accs[0], label="Train Accuracy")
+    plt.plot(range(epochs), accs[1], label="Test Accuracy")
     plt.xlabel(str(epochs) + " iterations")
     plt.ylabel("Train/Test accuracy")
     plt.legend()
-    fig.savefig("../Out/1-fig.png")
-    plt.show()
+    fig.savefig("../Out/1_fig.png")
 
 
-# * Parameters
-FEATURE_INPUT = 21  # input: LB to Tendency
-NUM_CLASSES = 3  # NSP = 1, 2, 3
+def main():
+    # process data
+    file_train = "../Data/train_data.csv"
+    file_test = "../Data/test_data.csv"
 
-learning_rate = 0.01
-epochs = 10000
-num_neurons = 10
-decay = math.pow(10, -6)
+    train_data = process_data(file_train)
+    test_data = process_data(file_test)
 
-# * Data Handling
-# import train data
-file = "../Data/train_data.csv"
-train_data = process_data(file)
+    # execute model
+    accs = nn_model(train_data, test_data)
 
-# import test data
-file = "../Data/test_data.csv"
-test_data = process_data(file)
+    export_data(accs)
 
-# * Execute
-nn_model(
-    train_data,
-    test_data,
-    FEATURE_INPUT,
-    NUM_CLASSES,
-    learning_rate,
-    epochs,
-    num_neurons,
-    decay,
-)
+
+if __name__ == "__main__":
+    main()
