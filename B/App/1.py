@@ -170,6 +170,7 @@ def export_data(dataset):
     plt.plot(range(epochs), dataset[2][1], label="Test Loss")
     plt.xlabel(str(epochs) + " iterations")
     plt.ylabel("Train/Test Loss")
+    plt.ylim(0,0.03)
     plt.legend()
     fig1.savefig("../Out/1_a.png")
 

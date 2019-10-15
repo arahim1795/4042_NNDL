@@ -48,18 +48,19 @@ def process_drop_data(data):
     dropped_data[1] = data[1]
 
     # drop 1 row from X
-    for i in range(7):
+    for i in range(len(data[0][0])):
         dropped_data[0].append(np.delete(data[0],i,1))
     return dropped_data
 
 
 def randomise_data(data):
-    np.random.seed(291)
+    np.random.seed(10)
 
     idx = np.arange(len(data[0]))
     np.random.shuffle(idx)
+    for i in range(len(data[0])):
+        data[0][i] = data[0][i][idx]
 
-    data[0] = data[0][idx]
     data[1] = data[1][idx]
 
     return data
@@ -132,24 +133,26 @@ def nn_model(train_data, test_data, feature_input):
     train_op = optimizer.minimize(l2_loss)
 
     errors = []
+    train_error_set, test_error_set = [], []
+    # train_data_set[i] is the training data where the ith column is removed
+    for i in range(len(train_data[0])):
+        train_error_set.append([])
+        test_error_set.append([])
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        train_error_set, test_error_set = [], []
         for i in tqdm(range(epochs)):
             batched_train_data = process_data_batch(train_data, batch_size)
-            for j in range(len(batched_train_data[0])):
+            for j in range(len(train_data[0])): # range 7 then 6
                 # batch train
                 for data in batched_train_data:
-                    print("----------------"+str(data[1]))
-                    print(np.shape(data[1]))
                     train_op.run(feed_dict={x: data[0], y_: data[1]})
 
-                # test
-                train_error = l2_loss.eval(feed_dict={x: train_data[0][j], y_: train_data[1][j]})
-                test_error = l2_loss.eval(feed_dict={x: test_data[0][j], y_: test_data[1][j]})
+                # evaluation
+                train_error = l2_loss.eval(feed_dict={x: train_data[0][j], y_: train_data[1]})
+                test_error = l2_loss.eval(feed_dict={x: test_data[0][j], y_: test_data[1]})
 
-                train_error_set.append(train_error)
-                test_error_set.append(test_error)
+                train_error_set[j].append(train_error)
+                test_error_set[j].append(test_error)
 
                 # randomise
                 train_data = randomise_data(train_data)
@@ -159,34 +162,35 @@ def nn_model(train_data, test_data, feature_input):
 
     return errors
 
-
-def export_data(dataset):
+def export_data(dataset,drop_count):
 
      # * Export Accuracies
-    file = open("../Out/1-accuracy.csv","w") 
-    with open("../Out/1-accuracy.csv", "w") as f:
-        f.write("iter,tr-acc,te-acc\n")
-        for i in range(0, epochs,250):
-            f.write("%s,%s,%s\n" % (str(i), str(dataset[2][0][i]), str(dataset[2][1][i])))
+    file = open("../Out/3_drop_"+str(drop_count)+"accuracy.csv","w") 
+    with open("../Out/3_drop_"+str(drop_count)+"accuracy.csv", "w") as f:
+        f.write("drop_column,iter,tr-loss,te-loss\n")
+        for i in range(0, epochs):
+            for j in range(len(dataset[0])):
+                f.write("%s,%s,%s,%s\n" % (j,str(i), str(dataset[0][j][i]), str(dataset[1][j][i])))
 
-    # TODO: export to csv, png (16 x 8)
     fig1 = plt.figure(1)
-    plt.plot(range(epochs), dataset[2][0], label="Train Loss")
-    plt.plot(range(epochs), dataset[2][1], label="Test Loss")
+    for i in range(len(dataset[0])):
+        plt.plot(range(epochs), dataset[0][i], label="Train Loss remove column "+ str(i))
     plt.xlabel(str(epochs) + " iterations")
-    plt.ylabel("Train/Test Loss")
+    plt.ylabel("Train Loss")
     plt.legend()
-    fig1.savefig("../Out/3_a.png")
+    plt.ylim(0.002,0.02)
+    fig1.savefig("../Out/3_train_"+str(drop_count)+".png")
+    plt.close()
 
     fig2 = plt.figure(2)
-    plt.scatter(range(50), dataset[0][0:50])
-    plt.plot(range(50), dataset[0][0:50], label="prediction")
-    plt.scatter(range(50), dataset[1][0:50])
-    plt.plot(range(50), dataset[1][0:50], label="actual")
-    plt.xlabel("Predicition Number")
-    plt.ylabel("Admission chance")
+    for i in range(len(dataset[1])):
+        plt.plot(range(epochs), dataset[1][i], label="Train Loss")
+    plt.xlabel(str(epochs) + " iterations")
+    plt.ylabel("Test Loss")
     plt.legend()
-    fig2.savefig("../Out/3_b.png")
+    plt.ylim(0.002,0.02)
+    fig1.savefig("../Out/3_test_"+str(drop_count)+".png")
+    plt.close()
 
 def main():
     # * Set Up Multiprocessing
@@ -207,37 +211,34 @@ def main():
     drop_one_train = process_drop_data(train_data)
     drop_one_test = process_drop_data(test_data)
 
-
     feature_array = [] 
     for i in range(FEATURE_INPUT[0]+1):
         feature_array.append(FEATURE_INPUT[0])
-
 
     # * Execution (Multiprocessing x 7)
     # errors = p.starmap(nn_model, zip(drop_one_train, drop_one_test, feature_array))
     errors = nn_model(drop_one_train,drop_one_test,feature_array)
 
-    export_data(errors)
+    export_data(errors,1)
 
-    # * Data Handler
+    # * Data 
 
-    # TODO: drop worst feature from test_data, train_data
-
-    # TODO: drop one column (x6)
-    drop_two_train = process_drop_data(drop_one_train[5])
-    drop_two_test = process_drop_data(drop_one_test[5])
+    train_data[0] = np.delete(train_data[0],5,1)
+    test_data[0] = np.delete(test_data[0],5,1)
+    print(np.shape(train_data[0]))
+    print(np.shape(test_data[0]))
+    # drop_one_train/test[5] is the one where the 5th column is dropped
+    drop_two_train = process_drop_data(train_data)
+    drop_two_test = process_drop_data(test_data)
 
     feature_array = [] 
     for i in range(FEATURE_INPUT[1]+1):
         feature_array.append(FEATURE_INPUT[1])
 
-        
-
-
     # * Execution (Multiprocessing x 6)
-    errors = p.starmap(nn_model, zip(drop_two_train, drop_two_test, feature_array))
-
-    export_data(errors)
+   # errors = p.starmap(nn_model, zip(drop_two_train, drop_two_test, feature_array))
+    errors = nn_model(drop_two_train,drop_two_test,feature_array)
+    export_data(errors,2)
 
 if __name__ == "__main__":
     main()
