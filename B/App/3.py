@@ -17,10 +17,7 @@ learning_rate = math.pow(10, -3)
 epochs = 1000
 num_neurons = 10
 batch_size = 8
-seed = 10
-np.random.seed(seed)
 decay = math.pow(10, -3)
-
 random.seed(291)
 
 
@@ -46,9 +43,13 @@ def process_data(file):
 
 def process_drop_data(data):
     dropped_data = [[],[]]
+    
+    # keep y values
     dropped_data[1] = data[1]
+
+    # drop 1 row from X
     for i in range(7):
-        dropped_data[0] = np.delete(data[0],i,1)
+        dropped_data[0].append(np.delete(data[0],i,1))
     return dropped_data
 
 
@@ -78,7 +79,7 @@ def data_sampling(data):
 
 def process_data_batch(data, batch):
     # parameters
-    entries = len(data[0])
+    entries = len(data[0][0])
     batched_data = []
 
     # slicer
@@ -86,15 +87,16 @@ def process_data_batch(data, batch):
 
     # batching
     for s in slices:
-        data_store = []
-        data_store.append(data[0][s])
-        data_store.append(data[1][s])
-        batched_data.append(data_store)
-
+        for i in range(len(data[0])):
+            data_store = []
+            data_store.append(data[0][i][s])
+            data_store.append(data[1][s])
+            batched_data.append(data_store)
     return batched_data
 
 
-def nn_model(train_data, test_data, FEATURE_INPUT):
+def nn_model(train_data, test_data, feature_input):
+    FEATURE_INPUT = feature_input[0]
     x = tf.placeholder(tf.float32, [None, FEATURE_INPUT])
     y_ = tf.placeholder(tf.float32, [None, 1])
 
@@ -135,19 +137,22 @@ def nn_model(train_data, test_data, FEATURE_INPUT):
         train_error_set, test_error_set = [], []
         for i in tqdm(range(epochs)):
             batched_train_data = process_data_batch(train_data, batch_size)
-            # batch train
-            for data in batched_train_data:
-                train_op.run(feed_dict={x: data[0], y_: data[1]})
+            for j in range(len(batched_train_data[0])):
+                # batch train
+                for data in batched_train_data:
+                    print("----------------"+str(data[1]))
+                    print(np.shape(data[1]))
+                    train_op.run(feed_dict={x: data[0], y_: data[1]})
 
-            # test
-            train_error = l2_loss.eval(feed_dict={x: train_data[0], y_: train_data[1]})
-            test_error = l2_loss.eval(feed_dict={x: test_data[0], y_: test_data[1]})
+                # test
+                train_error = l2_loss.eval(feed_dict={x: train_data[0][j], y_: train_data[1][j]})
+                test_error = l2_loss.eval(feed_dict={x: test_data[0][j], y_: test_data[1][j]})
 
-            train_error_set.append(train_error)
-            test_error_set.append(test_error)
+                train_error_set.append(train_error)
+                test_error_set.append(test_error)
 
-            # randomise
-            train_data = randomise_data(train_data)
+                # randomise
+                train_data = randomise_data(train_data)
 
     errors.append(train_error_set)
     errors.append(test_error_set)
@@ -192,19 +197,25 @@ def main():
     file_train = "../Data/train_data.csv"
     file_test = "../Data/test_data.csv"
 
+    # train data contains 2 (x and y) X 280 X 7/1 (x or y inputs)
     train_data = process_data(file_train)
     test_data = process_data(file_test)
 
-    # TODO: drop one column (x7)
+
+    # drop_one will contain a 2 items (X and Y)
+    # drop_one[0] contains a 7 X num rows X 6 (7 ways of dropping 1 element)
     drop_one_train = process_drop_data(train_data)
     drop_one_test = process_drop_data(test_data)
+
 
     feature_array = [] 
     for i in range(FEATURE_INPUT[0]+1):
         feature_array.append(FEATURE_INPUT[0])
 
+
     # * Execution (Multiprocessing x 7)
-    errors = p.starmap(nn_model, zip(drop_one_train, drop_one_test, feature_array))
+    # errors = p.starmap(nn_model, zip(drop_one_train, drop_one_test, feature_array))
+    errors = nn_model(drop_one_train,drop_one_test,feature_array)
 
     export_data(errors)
 
@@ -219,6 +230,8 @@ def main():
     feature_array = [] 
     for i in range(FEATURE_INPUT[1]+1):
         feature_array.append(FEATURE_INPUT[1])
+
+        
 
 
     # * Execution (Multiprocessing x 6)

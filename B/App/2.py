@@ -27,5 +27,5 @@ plt.xticks(
 plt.yticks(range(test_dataframe.shape[1]), test_dataframe.columns, fontsize=7)
 plt.colorbar()
 plt.legend()
-# TODO: Save to png
+plt.savefig("../Out/2.png")
 plt.show()
