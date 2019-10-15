@@ -188,18 +188,18 @@ def nn_model(train_data, test_data, batch_size):
     return data
 
 
-def export_data(acc):
+def export_data(data):
     # * Export Accuracies
     with open("../Out/2_optimal.csv", "w") as f:
-        f.write("iter,tr-acc,te-acc\n")
+        f.write("iter,tr-acc,te-acc,time\n")
         for j in range(0, epochs):
-            f.write("%s,%s,%s\n" % (str(j), acc[0][j], acc[1][j]))
+            f.write("%s,%s,%s,%s\n" % (str(j), data[0][j], data[1][j], data[2][j]))
 
     # * Plotting
     plt.figure(figsize=(16, 8))
     fig = plt.figure(1)
-    plt.plot(range(epochs), acc[0], label="Train Accuracy", color="#ff0000")
-    plt.plot(range(epochs), acc[1], label="Test Accuracy", color="#00ffff")
+    plt.plot(range(epochs), data[0], label="Train Accuracy", color="#ff0000")
+    plt.plot(range(epochs), data[1], label="Test Accuracy", color="#00ffff")
     plt.xlabel(str(epochs) + " iterations")
     plt.ylabel("Train/Test accuracy")
     plt.legend()
@@ -208,7 +208,6 @@ def export_data(acc):
 
 
 def export_data_batch(data, zipped_batch_size):
-
     for i in range(0, len(data), 5):
         #  mean cross-validation
         mean_train = (
@@ -238,11 +237,10 @@ def export_data_batch(data, zipped_batch_size):
         mean_train = np.divide(mean_train, 5.0)
         mean_test = np.divide(mean_test, 5.0)
         mean_time = np.divide(mean_time, 5.0)
-        # print(len(mean_time))
 
         # export accuracies
         with open("../Out/2_b" + str(zipped_batch_size[i]) + ".csv", "w") as f:
-            f.write("iter,tr-acc,te-acc\n")
+            f.write("iter,tr-acc,te-acc,time\n")
             for j in range(0, epochs):
                 f.write(
                     "%s,%s,%s,%s\n"
@@ -260,59 +258,69 @@ def export_data_batch(data, zipped_batch_size):
         fig.savefig("../Out/2_b" + str(zipped_batch_size[i]) + ".png")
         plt.close()
 
-    # get max mean time
-    max_times = []
-    for j in range(5):
-        max_time = []
-        for i in range(5):
-            data_time = []
-            index, value = max(
-                enumerate(data[i + (5 * j)][2]), key=operator.itemgetter(1)
-            )
-            data_time.append(i + (5 * j))
-            data_time.append(value)
-            max_time.append(data_time)
 
-        max_time_batch = []
-        set_num, value = max(max_time, key=lambda x: x[1])
-        max_time_batch.append(value)
-        max_times.append(np.array(max_time_batch))
+def extract_useful_data(file_1, file_2, file_3, file_4, file_5):
+    # import raw data
+    raw_data_1 = np.genfromtxt(file_1, delimiter=",")[1:]
+    raw_data_2 = np.genfromtxt(file_2, delimiter=",")[1:]
+    raw_data_3 = np.genfromtxt(file_3, delimiter=",")[1:]
+    raw_data_4 = np.genfromtxt(file_4, delimiter=",")[1:]
+    raw_data_5 = np.genfromtxt(file_5, delimiter=",")[1:]
+    # print(raw_data_1[0])
+
+    # get test accs
+    test_acc = []
+    test_acc.append(np.delete(raw_data_1, [0, 1, 3], axis=1).max())
+    test_acc.append(np.delete(raw_data_2, [0, 1, 3], axis=1).max())
+    test_acc.append(np.delete(raw_data_3, [0, 1, 3], axis=1).max())
+    test_acc.append(np.delete(raw_data_4, [0, 1, 3], axis=1).max())
+    test_acc.append(np.delete(raw_data_5, [0, 1, 3], axis=1).max())
+    test_acc = np.array(test_acc)
+
+    # get average time
+    time_1 = np.delete(raw_data_1, [0, 1, 2], axis=1)
+    time_2 = np.delete(raw_data_2, [0, 1, 2], axis=1)
+    time_3 = np.delete(raw_data_3, [0, 1, 2], axis=1)
+    time_4 = np.delete(raw_data_4, [0, 1, 2], axis=1)
+    time_5 = np.delete(raw_data_5, [0, 1, 2], axis=1)
+
+    timing = []
+    timing.append(np.average(time_1))
+    timing.append(np.average(time_2))
+    timing.append(np.average(time_3))
+    timing.append(np.average(time_4))
+    timing.append(np.average(time_5))
+    timing = np.array(timing)
+
+    filename = "../Out/2_max_mean_test.csv"
+    with open(filename, "w") as f:
+        f.write("batch,mean train\n")
+        for i in range(len(test_acc)):
+            f.write("%s,%s\n" % (str(batches[i]), test_acc[i]))
+
+    filename = "../Out/2_avg_time.csv"
+    with open(filename, "w") as f:
+        f.write("batch,avg time\n")
+        for i in range(len(timing)):
+            f.write("%s,%s\n" % (str(batches[i]), timing[i]))
 
     fig = plt.figure(figsize=(16, 8))
-    plt.plot(batches, max_times, label="time", color="#ff0000")
+    plt.plot(batches, test_acc, label="max_acc", color="#ff0000")
     plt.xticks(batches)
     plt.legend()
-    fig.savefig("../Out/2_max_time.png")
+    fig.savefig("../Out/2_max_mean_test.png")
     plt.close()
-
-    with open("../Out/2_max_time.csv", "w") as f:
-        f.write("batch,time\n")
-        for i in range(len(max_times)):
-            f.write("%s,%s\n" % (str(batches[i]), max_times[i]))
-
-    # * get mean time per batch
-    max_mean_time = []
-    for i in range(5):
-        data = []
-        index, value = max(enumerate(mean_time), key=operator.itemgetter(1))
-        data.append(value)
-        max_mean_time.append(np.array(data))
 
     fig = plt.figure(figsize=(16, 8))
-    plt.plot(batches, max_mean_time, label="mean_time", color="#ff0000")
+    plt.plot(batches, timing, label="avg_time", color="#ff0000")
     plt.xticks(batches)
     plt.legend()
-    fig.savefig("../Out/2_mean_times.png")
+    fig.savefig("../Out/2_avg_time.png")
     plt.close()
-
-    with open("../Out/2_mean_times.csv", "w") as f:
-        f.write("batch,time\n")
-        for i in range(len(max_mean_time)):
-            f.write("%s,%s\n" % (str(batches[i]), max_mean_time[i]))
 
 
 def main():
-    # process data
+    # # process data
     file_train = "../Data/train_data.csv"
     file_test = "../Data/test_data.csv"
 
@@ -337,18 +345,21 @@ def main():
     # execute k-fold
     accs = p.starmap(nn_model, zip(zipped_k_train, zipped_k_test, zipped_batch_size))
 
+    # export data meaningfully
     export_data_batch(accs, zipped_batch_size)
 
-    # # * Optimal Batch (size = 32)
-    # # * Data Handling
-    # optimal_size = 32
+    file_1 = "../Out/2_b4.csv"
+    file_2 = "../Out/2_b8.csv"
+    file_3 = "../Out/2_b16.csv"
+    file_4 = "../Out/2_b32.csv"
+    file_5 = "../Out/2_b64.csv"
+    extract_useful_data(file_1, file_2, file_3, file_4, file_5)
 
-    # optimal_batches_data = process_data_batch(train_70, optimal_size)
+    # pptimal batch (size = 4)
+    optimal_size = 4
+    optimal_acc = nn_model(train_data, test_data, optimal_size)
 
-    # # * Execution (Optimal Size)
-    # optimal_acc = nn_model(optimal_batches_data, train_70, test_30)
-
-    # export_data(optimal_acc, epochs)
+    export_data(optimal_acc)
 
 
 if __name__ == "__main__":
