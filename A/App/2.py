@@ -3,28 +3,27 @@ import tensorflow as tf
 import matplotlib.pylab as plt
 import multiprocessing as mp
 import numpy as np
-import random
 from sklearn.model_selection import KFold
 from sklearn.utils import gen_batches
-
-# import matplotlib.pylab as plt
+import time
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-# * Hyper-Parameters
+# hyper-parameters
+np.random.seed(291)
+
 FEATURE_INPUT = 21  # input: LB to Tendency
 NUM_CLASSES = 3  # NSP = 1, 2, 3
 
 batches = [4, 8, 16, 32, 64]
 decay = math.pow(10, -6)
 epochs = 20000
+k_value = 5
 learning_rate = 0.01
 num_neurons = 10
 
-k_value = 5
 
-
-# * Functions
+# functions
 def scale(X, X_min, X_max):
     return (X - X_min) / (X_max - X_min)
 
@@ -52,51 +51,39 @@ def process_data(file):
     return processed_data
 
 
-def process_data_k(file):
+def process_data_k(data):
     # parameters
     permutated_train, permutated_test = [], []
     train_indexes, test_indexes = [], []
-
-    # import data
-    raw_data = np.genfromtxt(file, delimiter=",")
 
     # create index splitter
     kf = KFold(n_splits=k_value)
 
     # get splitted index
-    for train, test in kf.split(raw_data):
+    for train, test in kf.split(data[0]):
         train_indexes.append(train)
         test_indexes.append(test)
-
-    # process X
-    X = raw_data[:, :FEATURE_INPUT]
-    X = scale(X, np.min(X, axis=0), np.max(X, axis=0))
-
-    # process Y
-    Y = raw_data[:, -1].astype(int)
-    Y_one_hot = np.zeros((Y.shape[0], NUM_CLASSES))
-    Y_one_hot[np.arange(Y.shape[0]), Y - 1] = 1
 
     # append processed data to list
     for a in range(k_value):
         train_data, test_data = [], []
-        train_data.append(X[train_indexes[a]])
-        train_data.append(Y_one_hot[train_indexes[a]])
-        test_data.append(X[test_indexes[a]])
-        test_data.append(Y_one_hot[test_indexes[a]])
+        train_data.append(data[0][train_indexes[a]])
+        train_data.append(data[1][train_indexes[a]])
+        test_data.append(data[0][test_indexes[a]])
+        test_data.append(data[1][test_indexes[a]])
         permutated_train.append(train_data)
         permutated_test.append(test_data)
 
     return permutated_train, permutated_test
 
 
-def process_data_batch(data, batch):
+def process_data_batch(data, batch_size):
     # parameters
     entries = len(data[0])
     batched_data = []
 
     # slicer
-    slices = gen_batches(entries, batch)
+    slices = gen_batches(entries, batch_size)
 
     # batching
     for s in slices:
@@ -113,7 +100,6 @@ def randomise_order(dataset):
     indexes = np.arange(len(dataset[0]))
 
     # randomise indexes
-    np.random.seed(291)
     np.random.shuffle(indexes)
 
     # randomise dataset order
@@ -123,8 +109,8 @@ def randomise_order(dataset):
     return dataset
 
 
-def nn_model(batched_train_data, train_data, test_data):
-    # * Create Model
+def nn_model(train_data, test_data, batch_size):
+    # create model
     x = tf.placeholder(tf.float32, [None, FEATURE_INPUT])
     y_ = tf.placeholder(tf.float32, [None, NUM_CLASSES])
 
@@ -164,14 +150,18 @@ def nn_model(batched_train_data, train_data, test_data):
     )
     accuracy = tf.reduce_mean(correct_prediction)
 
-    # * Run Model
-    train_acc, test_acc = [], []
+    # run model
+    train_acc, test_acc, per_epoch_time = [], [], []
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         for i in range(epochs):
+            start_time = time.time()
+            # batching
+            batched_data = process_data_batch(train_data, batch_size)
+
             # train
-            for data in batched_train_data:
+            for data in batched_data:
                 train_op.run(feed_dict={x: data[0], y_: data[1]})
 
             # evaluate
@@ -182,36 +172,33 @@ def nn_model(batched_train_data, train_data, test_data):
                 accuracy.eval(feed_dict={x: test_data[0], y_: test_data[1]})
             )
 
-            if (i % 100) == 0:
+            if (i % 1000) == 0:
                 print("epoch: ", i, " tr-acc: ", train_acc[i], "te-acc: ", test_acc[i])
 
             # randomise dataset
             train_data = randomise_order(train_data)
+            per_epoch_time.append(time.time() - start_time)
 
-            random.shuffle(batched_train_data)
+    data = []
+    data.append(train_acc)
+    data.append(test_acc)
+    data.append(per_epoch_time)
 
-            for data in batched_train_data:
-                data = randomise_order(data)
-
-    acc = []
-    acc.append(train_acc)
-    acc.append(test_acc)
-
-    return acc
+    return data
 
 
-def export_data(acc, epochs):
-    # * Export Accuracies
+def export_data(data):
+    # export accuracies
     with open("../Out/2_optimal.csv", "w") as f:
-        f.write("iter,tr-acc,te-acc\n")
+        f.write("iter,tr-acc,te-acc,time\n")
         for j in range(0, epochs):
-            f.write("%s,%s,%s\n" % (str(j), acc[0][j], acc[1][j]))
+            f.write("%s,%s,%s,%s\n" % (str(j), data[0][j], data[1][j], data[2][j]))
 
-    # * Plotting
-    plt.figure(figsize=(10, 8))
+    # plotting
+    plt.figure(figsize=(16, 8))
     fig = plt.figure(1)
-    plt.plot(range(epochs), acc[0], label="Train Accuracy", color="#ff0000")
-    plt.plot(range(epochs), acc[1], label="Test Accuracy", color="#00ffff")
+    plt.plot(range(epochs), data[0], label="Train Accuracy", color="#ff0000")
+    plt.plot(range(epochs), data[1], label="Test Accuracy", color="#00ffff")
     plt.xlabel(str(epochs) + " iterations")
     plt.ylabel("Train/Test accuracy")
     plt.legend()
@@ -219,101 +206,159 @@ def export_data(acc, epochs):
     plt.close()
 
 
-def export_data_batch(acc, batches, k_value, epochs):
-
-    zipped_batch_num = []
-    for i in range(len(batches)):
-        for j in range(k_value):
-            zipped_batch_num.append(batches[i])
-
-    for i in range(0, len(acc), 5):
-        #  mean validation
+def export_data_batch(data, zipped_batch_size):
+    for i in range(0, len(data), 5):
+        #  mean cross-validation
         mean_train = (
-            np.array(acc[i][0])
-            + np.array(acc[i + 1][0])
-            + np.array(acc[i + 2][0])
-            + np.array(acc[i + 3][0])
-            + np.array(acc[i + 4][0])
+            np.array(data[i][0])
+            + np.array(data[i + 1][0])
+            + np.array(data[i + 2][0])
+            + np.array(data[i + 3][0])
+            + np.array(data[i + 4][0])
         )
 
         mean_test = (
-            np.array(acc[i][1])
-            + np.array(acc[i + 1][1])
-            + np.array(acc[i + 2][1])
-            + np.array(acc[i + 3][1])
-            + np.array(acc[i + 4][1])
+            np.array(data[i][1])
+            + np.array(data[i + 1][1])
+            + np.array(data[i + 2][1])
+            + np.array(data[i + 3][1])
+            + np.array(data[i + 4][1])
+        )
+
+        mean_time = (
+            np.array(data[i][2])
+            + np.array(data[i + 1][2])
+            + np.array(data[i + 2][2])
+            + np.array(data[i + 3][2])
+            + np.array(data[i + 4][2])
         )
 
         mean_train = np.divide(mean_train, 5.0)
         mean_test = np.divide(mean_test, 5.0)
+        mean_time = np.divide(mean_time, 5.0)
 
-        # export accuracies
-        with open("../Out/2_b" + str(zipped_batch_num[i]) + ".csv", "w") as f:
-            f.write("iter,tr-acc,te-acc\n")
+        # export data
+        with open("../Out/2_b" + str(zipped_batch_size[i]) + ".csv", "w") as f:
+            f.write("iter,tr-acc,te-acc,time\n")
             for j in range(0, epochs):
-                f.write("%s,%s,%s\n" % (str(j), mean_train[j], mean_test[j]))
+                f.write(
+                    "%s,%s,%s,%s\n"
+                    % (str(j), mean_train[j], mean_test[j], mean_time[j])
+                )
 
         # plotting
-        fig = plt.figure(1, figsize=(10, 8))
+        fig = plt.figure(figsize=(16, 8))
         plt.plot(range(epochs), mean_train, label="mean_train", color="#ff0000")
         plt.plot(range(epochs), mean_test, label="mean_test", color="#00ffff")
 
         plt.xlabel(str(epochs) + " iterations")
         plt.ylabel("Train/Test accuracy")
         plt.legend()
-        fig.savefig("../Out/2_b" + str(zipped_batch_num[i]) + ".png")
+        fig.savefig("../Out/2_b" + str(zipped_batch_size[i]) + ".png")
         plt.close()
 
 
-def main():
-    # * Determining Optimal Batch
-    # * Parameters
-    train_file = "../Data/train_data.csv"
+def extract_useful_data(file_1, file_2, file_3, file_4, file_5):
+    # import raw data
+    raw_data_1 = np.genfromtxt(file_1, delimiter=",")[1:]
+    raw_data_2 = np.genfromtxt(file_2, delimiter=",")[1:]
+    raw_data_3 = np.genfromtxt(file_3, delimiter=",")[1:]
+    raw_data_4 = np.genfromtxt(file_4, delimiter=",")[1:]
+    raw_data_5 = np.genfromtxt(file_5, delimiter=",")[1:]
+    # print(raw_data_1[0])
 
-    # * Multiprocessing Setup
+    # get test accs
+    test_acc = []
+    test_acc.append(np.delete(raw_data_1, [0, 1, 3], axis=1).max())
+    test_acc.append(np.delete(raw_data_2, [0, 1, 3], axis=1).max())
+    test_acc.append(np.delete(raw_data_3, [0, 1, 3], axis=1).max())
+    test_acc.append(np.delete(raw_data_4, [0, 1, 3], axis=1).max())
+    test_acc.append(np.delete(raw_data_5, [0, 1, 3], axis=1).max())
+    test_acc = np.array(test_acc)
+
+    # get average time
+    time_1 = np.delete(raw_data_1, [0, 1, 2], axis=1)
+    time_2 = np.delete(raw_data_2, [0, 1, 2], axis=1)
+    time_3 = np.delete(raw_data_3, [0, 1, 2], axis=1)
+    time_4 = np.delete(raw_data_4, [0, 1, 2], axis=1)
+    time_5 = np.delete(raw_data_5, [0, 1, 2], axis=1)
+
+    timing = []
+    timing.append(np.average(time_1))
+    timing.append(np.average(time_2))
+    timing.append(np.average(time_3))
+    timing.append(np.average(time_4))
+    timing.append(np.average(time_5))
+    timing = np.array(timing)
+
+    filename = "../Out/2_max_mean_test.csv"
+    with open(filename, "w") as f:
+        f.write("batch,mean test\n")
+        for i in range(len(test_acc)):
+            f.write("%s,%s\n" % (str(batches[i]), test_acc[i]))
+
+    filename = "../Out/2_avg_time.csv"
+    with open(filename, "w") as f:
+        f.write("batch,avg time\n")
+        for i in range(len(timing)):
+            f.write("%s,%s\n" % (str(batches[i]), timing[i]))
+
+    fig = plt.figure(figsize=(16, 8))
+    plt.plot(batches, test_acc, label="max_acc", color="#ff0000")
+    plt.xticks(batches)
+    plt.legend()
+    fig.savefig("../Out/2_max_mean_test.png")
+    plt.close()
+
+    fig = plt.figure(figsize=(16, 8))
+    plt.plot(batches, timing, label="avg_time", color="#ff0000")
+    plt.xticks(batches)
+    plt.legend()
+    fig.savefig("../Out/2_avg_time.png")
+    plt.close()
+
+
+def main():
+    # process data
+    file_train = "../Data/train_data.csv"
+    file_test = "../Data/test_data.csv"
+
+    train_data = process_data(file_train)
+    test_data = process_data(file_test)
+
+    k_train, k_test = process_data_k(train_data)
+
+    # setup multiprocessing
     num_threads = mp.cpu_count() - 1
     p = mp.Pool(processes=num_threads)
 
-    # * Data Handling
-    # * k-fold validation
-    # import k-fold train data
-    k_train_data, k_test_data = process_data_k(train_file)
-
-    # batching
-    batch_train_set = []
-    for i in batches:
+    # zipping dataset
+    zipped_batch_size = []
+    zipped_k_train, zipped_k_test = [], []
+    for i in range(len(batches)):
         for j in range(k_value):
-            batch_train_set.append(process_data_batch(k_train_data[j], i))
+            zipped_batch_size.append(batches[i])
+            zipped_k_train.append(k_train[j])
+            zipped_k_test.append(k_test[j])
 
-    # copy data for zipping
-    copy_train = k_train_data
-    copy_test = k_test_data
-    for i in range(len(batches) - 1):
-        k_train_data += copy_train
-        k_test_data += copy_test
+    # execute k-fold
+    dataset = p.starmap(nn_model, zip(zipped_k_train, zipped_k_test, zipped_batch_size))
 
-    # * Execution (K-Fold)
-    # acc = p.starmap(nn_model, zip(batch_train_set, k_train_data, k_test_data))
+    # export data meaningfully
+    export_data_batch(dataset, zipped_batch_size)
 
-    # export_data_batch(acc, batches, k_value, epochs)
+    file_1 = "../Out/2_b4.csv"
+    file_2 = "../Out/2_b8.csv"
+    file_3 = "../Out/2_b16.csv"
+    file_4 = "../Out/2_b32.csv"
+    file_5 = "../Out/2_b64.csv"
+    extract_useful_data(file_1, file_2, file_3, file_4, file_5)
 
-    # * Optimal Batch (size = 32)
-    # * Data Handling
-    optimal_size = 32
-    test_file = "../Data/test_data.csv"
+    # pptimal batch (size = 4)
+    optimal_size = 4
+    optimal_acc = nn_model(train_data, test_data, optimal_size)
 
-    # import train data
-    train_70 = process_data(train_file)
-
-    # import test data
-    test_30 = process_data(test_file)
-
-    optimal_batches_data = process_data_batch(train_70, optimal_size)
-
-    # * Execution (Optimal Size)
-    optimal_acc = nn_model(optimal_batches_data, train_70, test_30)
-
-    export_data(optimal_acc, epochs)
+    export_data(optimal_acc)
 
 
 if __name__ == "__main__":

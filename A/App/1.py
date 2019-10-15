@@ -1,18 +1,26 @@
 import math
+import tensorflow as tf
 import matplotlib.pylab as plt
 import numpy as np
-import random
-import tensorflow as tf
-from tqdm import tqdm
+from sklearn.utils import gen_batches
+import time
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
+# hyper-parameters
+np.random.seed(291)
 
-def test():
-    return 1
+FEATURE_INPUT = 21  # input: LB to Tendency
+NUM_CLASSES = 3  # NSP = 1, 2, 3
+
+batch = 32
+decay = math.pow(10, -6)
+epochs = 100000
+learning_rate = 0.01
+num_neurons = 10
 
 
-# * Functions
+# functions
 def scale(X, X_min, X_max):
     return (X - X_min) / (X_max - X_min)
 
@@ -40,35 +48,39 @@ def process_data(file):
     return processed_data
 
 
-def randomise_order(dataset):
+def process_data_batch(data):
     # parameters
-    randomised_data = []
+    entries = len(data[0])
+    batched_data = []
 
-    # column-wise combine data
-    combined_data = np.concatenate((dataset[0], dataset[1]), axis=1)
+    # slicer
+    slices = gen_batches(entries, batch)
 
-    # randomise data
-    random.seed(291)
-    random.shuffle(combined_data)
+    # batching
+    for s in slices:
+        data_store = []
+        data_store.append(data[0][s])
+        data_store.append(data[1][s])
+        batched_data.append(data_store)
 
-    # append split randomised data to list
-    randomised_data.append(combined_data[:, :FEATURE_INPUT])
-    randomised_data.append(combined_data[:, FEATURE_INPUT:])
-
-    return randomised_data
+    return batched_data
 
 
-def nn_model(
-    train_data,
-    test_data,
-    num_features,
-    num_classes,
-    learning_rate,
-    epochs,
-    num_neurons,
-    decay,
-):
-    # * Create Model
+def randomise_order(dataset):
+    # generate indexes
+    indexes = np.arange(len(dataset[0]))
+
+    # randomise indexes
+    np.random.shuffle(indexes)
+
+    # randomise dataset order
+    dataset[0] = dataset[0][indexes]
+    dataset[1] = dataset[1][indexes]
+
+    return dataset
+
+
+def nn_model(train_data, test_data):
     x = tf.placeholder(tf.float32, [None, FEATURE_INPUT])
     y_ = tf.placeholder(tf.float32, [None, NUM_CLASSES])
 
@@ -109,14 +121,19 @@ def nn_model(
     )
     accuracy = tf.reduce_mean(correct_prediction)
 
-    # * Run Model
-    train_acc, test_acc = [], []
+    # run model
+    train_acc, test_acc, per_epoch_time = [], [], []
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        for j in tqdm(range(epochs)):
+        for i in range(epochs):
+            start_time = time.time()
+            # batching
+            batched_data = process_data_batch(train_data)
+
             # train
-            train_op.run(feed_dict={x: train_data[0], y_: train_data[1]})
+            for data in batched_data:
+                train_op.run(feed_dict={x: data[0], y_: data[1]})
 
             # evaluate
             train_acc.append(
@@ -126,52 +143,54 @@ def nn_model(
                 accuracy.eval(feed_dict={x: test_data[0], y_: test_data[1]})
             )
 
-            # randomise order
+            if (i % 1000) == 0:
+                print("epoch: ", i, " tr-acc: ", train_acc[i], "te-acc: ", test_acc[i])
+
+            # randomise dataset
             train_data = randomise_order(train_data)
+            per_epoch_time.append(time.time() - start_time)
 
-    # * Export Accuracies
-    with open("../Out/1-accuracy.csv", "w") as f:
-        f.write("iter,tr-acc,te-acc\n")
-        for i in range(0, epochs, 250):
-            f.write("%s,%s,%s\n" % (str(i), str(train_acc[i]), str(test_acc[i])))
+    data = []
+    data.append(train_acc)
+    data.append(test_acc)
+    data.append(per_epoch_time)
 
-    # * Plotting
-    fig = plt.figure(1)
-    plt.plot(range(epochs), train_acc, label="Train Accuracy")
-    plt.plot(range(epochs), test_acc, label="Test Accuracy")
+    return data
+
+
+def export_data(data):
+    # export values
+    with open("../Out/1.csv", "w") as f:
+        f.write("iter,tr-acc,te-acc,time\n")
+        for i in range(0, epochs):
+            f.write(
+                "%s,%s,%s,%s\n"
+                % (str(i), str(data[0][i]), str(data[1][i]), str(data[2][i]))
+            )
+
+    # plotting
+    fig = plt.figure(figsize=(16, 8))
+    plt.plot(range(epochs), data[0], label="Train Accuracy")
+    plt.plot(range(epochs), data[1], label="Test Accuracy")
     plt.xlabel(str(epochs) + " iterations")
     plt.ylabel("Train/Test accuracy")
     plt.legend()
-    fig.savefig("../Out/1-fig.png")
-    plt.show()
+    fig.savefig("../Out/1_fig.png")
 
 
-# * Parameters
-FEATURE_INPUT = 21  # input: LB to Tendency
-NUM_CLASSES = 3  # NSP = 1, 2, 3
+def main():
+    # process data
+    file_train = "../Data/train_data.csv"
+    file_test = "../Data/test_data.csv"
 
-learning_rate = 0.01
-epochs = 10000
-num_neurons = 10
-decay = math.pow(10, -6)
+    train_data = process_data(file_train)
+    test_data = process_data(file_test)
 
-# * Data Handling
-# import train data
-file = "../Data/train_data.csv"
-train_data = process_data(file)
+    # execute model
+    dataset = nn_model(train_data, test_data)
 
-# import test data
-file = "../Data/test_data.csv"
-test_data = process_data(file)
+    export_data(dataset)
 
-# * Execute
-nn_model(
-    train_data,
-    test_data,
-    FEATURE_INPUT,
-    NUM_CLASSES,
-    learning_rate,
-    epochs,
-    num_neurons,
-    decay,
-)
+
+if __name__ == "__main__":
+    main()
