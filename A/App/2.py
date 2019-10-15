@@ -3,7 +3,6 @@ import tensorflow as tf
 import matplotlib.pylab as plt
 import multiprocessing as mp
 import numpy as np
-import operator
 from sklearn.model_selection import KFold
 from sklearn.utils import gen_batches
 import time
@@ -111,7 +110,7 @@ def randomise_order(dataset):
 
 
 def nn_model(train_data, test_data, batch_size):
-    # * Create Model
+    # create model
     x = tf.placeholder(tf.float32, [None, FEATURE_INPUT])
     y_ = tf.placeholder(tf.float32, [None, NUM_CLASSES])
 
@@ -151,7 +150,7 @@ def nn_model(train_data, test_data, batch_size):
     )
     accuracy = tf.reduce_mean(correct_prediction)
 
-    # * Run Model
+    # run model
     train_acc, test_acc, per_epoch_time = [], [], []
 
     with tf.Session() as sess:
@@ -189,13 +188,13 @@ def nn_model(train_data, test_data, batch_size):
 
 
 def export_data(data):
-    # * Export Accuracies
+    # export accuracies
     with open("../Out/2_optimal.csv", "w") as f:
         f.write("iter,tr-acc,te-acc,time\n")
         for j in range(0, epochs):
             f.write("%s,%s,%s,%s\n" % (str(j), data[0][j], data[1][j], data[2][j]))
 
-    # * Plotting
+    # plotting
     plt.figure(figsize=(16, 8))
     fig = plt.figure(1)
     plt.plot(range(epochs), data[0], label="Train Accuracy", color="#ff0000")
@@ -238,7 +237,7 @@ def export_data_batch(data, zipped_batch_size):
         mean_test = np.divide(mean_test, 5.0)
         mean_time = np.divide(mean_time, 5.0)
 
-        # export accuracies
+        # export data
         with open("../Out/2_b" + str(zipped_batch_size[i]) + ".csv", "w") as f:
             f.write("iter,tr-acc,te-acc,time\n")
             for j in range(0, epochs):
@@ -294,7 +293,7 @@ def extract_useful_data(file_1, file_2, file_3, file_4, file_5):
 
     filename = "../Out/2_max_mean_test.csv"
     with open(filename, "w") as f:
-        f.write("batch,mean train\n")
+        f.write("batch,mean test\n")
         for i in range(len(test_acc)):
             f.write("%s,%s\n" % (str(batches[i]), test_acc[i]))
 
@@ -320,7 +319,7 @@ def extract_useful_data(file_1, file_2, file_3, file_4, file_5):
 
 
 def main():
-    # # process data
+    # process data
     file_train = "../Data/train_data.csv"
     file_test = "../Data/test_data.csv"
 
@@ -343,10 +342,10 @@ def main():
             zipped_k_test.append(k_test[j])
 
     # execute k-fold
-    accs = p.starmap(nn_model, zip(zipped_k_train, zipped_k_test, zipped_batch_size))
+    dataset = p.starmap(nn_model, zip(zipped_k_train, zipped_k_test, zipped_batch_size))
 
     # export data meaningfully
-    export_data_batch(accs, zipped_batch_size)
+    export_data_batch(dataset, zipped_batch_size)
 
     file_1 = "../Out/2_b4.csv"
     file_2 = "../Out/2_b8.csv"
