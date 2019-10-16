@@ -15,10 +15,10 @@ FEATURE_INPUT = 5
 
 batch_size = 8
 decay = math.pow(10, -3)
-epochs = 1000
+epochs = 100000
 keep_probability = 0.8
 learning_rate = math.pow(10, -3)
-num_neurons = 10
+num_neurons = 50
 
 
 # * Function
@@ -75,7 +75,7 @@ def process_data_batch(data):
     batched_data = []
 
     # slicer
-    slices = gen_batches(entries, batch_size)
+    slices = gen_batches(entries, 8)
 
     # batching
     for s in slices:
@@ -86,6 +86,75 @@ def process_data_batch(data):
 
     return batched_data
 
+def nn_model_3(train_data, test_data):
+    x = tf.placeholder(tf.float32, [None, FEATURE_INPUT])
+    y_ = tf.placeholder(tf.float32, [None, 1])
+
+    # hidden layer 1: relu
+    layer_1_weights = tf.Variable(
+        tf.truncated_normal(
+            [FEATURE_INPUT, num_neurons], stddev=1.0 / math.sqrt(float(FEATURE_INPUT))
+        ),
+        name="one_weights",
+    )
+    layer_1_biases = tf.Variable(tf.zeros([num_neurons]), name="one_biases")
+    layer_1_var = tf.matmul(x, layer_1_weights) + layer_1_biases
+
+    layer_1_output = tf.nn.relu(layer_1_var)
+
+    # final layer: linear
+    layer_final_weights = tf.Variable(
+        tf.truncated_normal(
+            [num_neurons, 1], stddev=1.0 / math.sqrt(float(num_neurons))
+        ),
+        name="final_weights",
+    )
+    layer_final_biases = tf.Variable(tf.zeros([1]), name="final_biases")
+    logits = tf.matmul(layer_1_output, layer_final_weights) + layer_final_biases
+
+    # regularise (l2)
+    regularization = (
+        tf.nn.l2_loss(layer_1_weights)
+        + tf.nn.l2_loss(layer_final_weights)
+    )
+    loss = tf.reduce_mean(tf.square(y_ - logits))
+    l2_loss = tf.reduce_mean(loss + decay * regularization)
+
+    # minimise loss
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+    train_op = optimizer.minimize(l2_loss)
+
+    train_loss, test_loss, per_epoch_time = [], [], []
+
+    # run model
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        for i in range(epochs):
+            start_time = time.time()
+            # batching
+            batched_data = process_data_batch(train_data)
+
+            for data in batched_data:
+                train_op.run(feed_dict={x: data[0], y_: data[1]})
+
+            train_loss.append(
+                l2_loss.eval(feed_dict={x: train_data[0], y_: train_data[1]})
+            )
+
+            test_loss.append(
+                l2_loss.eval(feed_dict={x: test_data[0], y_: test_data[1]})
+            )
+
+            # randomise
+            train_data = randomise_data(train_data)
+            per_epoch_time.append(time.time() - start_time)
+
+    data = []
+    data.append(train_loss)
+    data.append(test_loss)
+    data.append(per_epoch_time)
+
+    return data
 
 def nn_model_4(train_data, test_data):
     x = tf.placeholder(tf.float32, [None, FEATURE_INPUT])
@@ -458,58 +527,25 @@ def nn_model_5d(train_data, test_data):
 
     return data
 
-
-def export_data(dataset, feature_input):
-
-    for i in range(feature_input):
-        filename = "../Out/3_" + str(feature_input - 1) + "_drop_" + str(i) + ".csv"
-        with open(filename, "w") as f:
-            f.write("iter,tr-loss,te-loss,time\n")
-            for j in range(0, epochs):
-                f.write(
-                    "%s,%s,%s,%s\n"
-                    % (str(i), dataset[i][0][j], dataset[i][1][j], dataset[i][2][j])
-                )
-
-    colors = [
-        "#FF0000",
-        "#0000FF",
-        "#008000",
-        "#FFA500",
-        "#800080",
-        "#FFC0CB",
-        "#00FFFF",
-    ]
+def plot_all(dataset_zero,dataset_one,dataset_one_drop,dataset_two,dataset_two_drop):
+    test_accuracies = []
+    test_accuracies.append(dataset_zero)
+    test_accuracies.append(dataset_one)
+    test_accuracies.append(dataset_one_drop)
+    test_accuracies.append(dataset_two)
+    test_accuracies.append(dataset_two_drop)
 
     fig1 = plt.figure(figsize=(16, 8))
-    for i in range(feature_input):
-        plt.plot(
-            range(epochs),
-            dataset[i][0],
-            label="Loss w\\out Feature " + str(i),
-            color=colors[i],
-        )
+    plt.plot(range(epochs), test_accuracies[0], label = "3 Layer", color = "#FF0000")
+    plt.plot(range(epochs), test_accuracies[1], label = "4 Layer", color = "#0000FF")
+    plt.plot(range(epochs), test_accuracies[2], label = "4 Layer Dropout", color = "#008000")
+    plt.plot(range(epochs), test_accuracies[3], label = "5 Layer", color = "#FFA500")
+    plt.plot(range(epochs), test_accuracies[4], label = "5 Layer Dropout", color = "#FFC0CB")
     plt.xlabel(str(epochs) + " iterations")
-    plt.ylabel("Train Loss (" + str(feature_input - 1) + ")")
+    plt.ylabel("Test Loss")
     plt.legend()
-    plt.ylim(0.002, 0.02)
-    fig1.savefig("../Out/3_" + str(feature_input - 1) + "_feature_train_loss.png")
-    plt.close()
-
-    fig1 = plt.figure(figsize=(16, 8))
-    for i in range(feature_input):
-        plt.plot(
-            range(epochs),
-            dataset[i][1],
-            label="Loss w\\out Feature " + str(i),
-            color=colors[i],
-        )
-    plt.xlabel(str(epochs) + " iterations")
-    plt.ylabel("Test Loss (" + str(feature_input - 1) + ")")
-    plt.legend()
-    plt.ylim(0.002, 0.02)
-    fig1.savefig("../Out/3_" + str(feature_input - 1) + "_feature_test_loss.png")
-    plt.close()
+    plt.ylim(0.002,0.02)
+    fig1.savefig("../Out/4.png")
 
 
 def main():
@@ -525,46 +561,39 @@ def main():
     train_data = process_data(file_train)
     test_data = process_data(file_test)
 
-    # drop one feature
-    dropped_train_dataset, dropped_test_dataset = [], []
-    for i in range(FEATURE_INPUT[0]):
-        dropped_train_dataset.append(process_drop_feature(train_data, i))
-        dropped_test_dataset.append(process_drop_feature(test_data, i))
+    # Remove 1st column: Research
+    dropped_one_train, dropped_one_test = [], []
+    dropped_one_train.append(process_drop_feature(train_data, 6))
+    dropped_one_test.append(process_drop_feature(test_data, 6))
 
+    # drop 2nd feature
+    dropped_two_train, dropped_two_test = [], []
+    dropped_two_train.append(process_drop_feature(dropped_one_train[0], 1))
+    dropped_two_test.append(process_drop_feature(dropped_one_test[0], 1))
     # zipping dataset
-    zipped_feature = []
-    for i in range(FEATURE_INPUT[0]):
-        zipped_feature.append(FEATURE_INPUT[0] - 1)
 
-    # execute RFE on 7 features
-    dataset = p.starmap(
-        nn_model, zip(dropped_train_dataset, dropped_test_dataset, zipped_feature)
+    dataset_zero = p.starmap(
+        nn_model_3, zip(dropped_two_train,dropped_two_test)
+    )
+    dataset_one = p.starmap(
+        nn_model_4, zip(dropped_two_train, dropped_two_test)
+    )
+    
+    dataset_one_drop = p.starmap(
+        nn_model_4d, zip(dropped_two_train, dropped_two_test)
     )
 
-    export_data(dataset, FEATURE_INPUT[0])
-
-    # process data
-    #  remove column 1: TOEFL
-    dropped_one_train = process_drop_feature(train_data, 1)
-    dropped_one_test = process_drop_feature(test_data, 1)
-
-    # drop one feature
-    dropped_train_dataset, dropped_test_dataset = [], []
-    for i in range(FEATURE_INPUT[1]):
-        dropped_train_dataset.append(process_drop_feature(dropped_one_train, i))
-        dropped_test_dataset.append(process_drop_feature(dropped_one_test, i))
-
-    # zipping dataset
-    zipped_feature = []
-    for i in range(FEATURE_INPUT[1]):
-        zipped_feature.append(FEATURE_INPUT[1] - 1)
-
-    # execute RFE on 7 features
-    dataset = p.starmap(
-        nn_model, zip(dropped_train_dataset, dropped_test_dataset, zipped_feature)
+    # execute RFE on 6 features
+    dataset_two = p.starmap(
+        nn_model_5, zip(dropped_two_train, dropped_two_test)
     )
 
-    export_data(dataset, FEATURE_INPUT[1])
+    dataset_two_drop = p.starmap(
+        nn_model_5d, zip(dropped_two_train, dropped_two_test)
+    )
+
+    plot_all(dataset_zero[0][1],dataset_one[0][1],dataset_one_drop[0][1],dataset_two[0][1],dataset_two_drop[0][1])
+
 
 
 if __name__ == "__main__":
