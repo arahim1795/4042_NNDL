@@ -6,6 +6,8 @@ import math
 import tensorflow as tf
 import numpy as np
 import pylab as plt
+import pandas
+from tqdm import tqdm
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
@@ -19,19 +21,20 @@ def scale(data):
 FEATURE_INPUT = 8
 
 learning_rate = math.pow(10,-3)
-epochs = 1000
-num_neurons = 10
+epochs = 100000
+num_neurons = 50
 batch_size = 8
 seed = 10
 np.random.seed(seed)
 decay = math.pow(10, -3)
+keep_probability = 0.8
 
 # Data Pre-Processing / Handler
 # X_: inputs, Y_: NSP
 # index 0-4: train, 5: test
 X_, Y_ = [], []
 
-data = np.genfromtxt('input/B/train_b_data.csv', delimiter=',')
+data = np.genfromtxt('../Data/train_data.csv', delimiter=',')
 # process X and Y
 X_temp, Y_temp = data[:,:8], data[:,-1]
 Y_temp = Y_temp.reshape(Y_temp.shape[0], 1)
@@ -41,7 +44,7 @@ X_temp = scale(X_temp)
 X_.append(X_temp)
 Y_.append(Y_temp)
 
-data = np.genfromtxt('input/B/test_b_data.csv', delimiter=',')
+data = np.genfromtxt('../Data/test_data.csv', delimiter=',')
 #process X and Y
 X_temp, Y_temp = data[:,:8], data[:,-1]
 Y_temp = Y_temp.reshape(Y_temp.shape[0], 1)
@@ -51,10 +54,9 @@ X_temp = scale(X_temp)
 X_.append(X_temp)
 Y_.append(Y_temp)
 
-# test_data = list(zip(X_[1],Y_[1]))
-# random.shuffle(test_data)
-# predict_set = test_data[:50]
-# actual_set = test_data[:50]
+#shuffled outputs
+actual = Y_[1][idx] 
+actual_set = np.squeeze(np.asarray(actual))
 
 # for Qn
 # - experiment with small datasets
@@ -75,17 +77,45 @@ layer_1_weights = tf.Variable(tf.truncated_normal(
 layer_1_biases = tf.Variable(tf.zeros([num_neurons]), name='one_biases')
 layer_1_var = tf.matmul(x, layer_1_weights) + layer_1_biases
 
+# Relu for layer 1
 layer_1_output = tf.nn.relu(layer_1_var)
+
+# Dropout for layer 1
+layer_1_dropout = tf.nn.dropout(layer_1_output, keep_probability)
+
+# Hidden Layer 2
+layer_2_weights = tf.Variable(tf.truncated_normal(
+    [num_neurons, num_neurons], stddev=1.0/math.sqrt(float(num_neurons))), name='two_weights')
+layer_2_biases = tf.Variable(tf.zeros([num_neurons]), name='one_biases')
+layer_2_var = tf.matmul(layer_1_dropout, layer_2_weights) + layer_2_biases
+
+# layer 2 relu
+layer_2_output = tf.nn.relu(layer_2_var)
+
+# layer 2 dropout
+layer_2_dropout = tf.nn.dropout(layer_2_output, keep_probability)
+
+# Hidden Layer 3
+layer_3_weights = tf.Variable(tf.truncated_normal(
+    [num_neurons, num_neurons], stddev=1.0/math.sqrt(float(num_neurons))), name='two_weights')
+layer_3_biases = tf.Variable(tf.zeros([num_neurons]), name='one_biases')
+layer_3_var = tf.matmul(layer_2_dropout, layer_3_weights) + layer_3_biases
+
+# layer 3 relu
+layer_3_output = tf.nn.relu(layer_3_var)
+
+# layer 2 dropout
+layer_3_dropout = tf.nn.dropout(layer_3_output, keep_probability)
 
 # Final layer
 layer_final_weights = tf.Variable(tf.truncated_normal(
     [num_neurons, 1], stddev=1.0/math.sqrt(float(num_neurons))), name='final_weights')
 layer_final_biases = tf.Variable(tf.zeros([1]), name='final_biases')
-logits = tf.matmul(layer_1_output, layer_final_weights) + layer_final_biases
+logits = tf.matmul(layer_3_dropout, layer_final_weights) + layer_final_biases
 
 # Regularisation (L2)
 loss = tf.reduce_mean(tf.square(y_ - logits))
-regularizer = tf.nn.l2_loss(logits)
+loss = tf.reduce_mean(loss + (decay*tf.nn.l2_loss(logits)))
 
 # Minimising Lossz`
 optimizer = tf.train.GradientDescentOptimizer(learning_rate)
@@ -96,30 +126,26 @@ correct_prediction = tf.cast(
 accuracy = tf.reduce_mean(correct_prediction)
 
 train_loss_set,test_loss_set = [], []
+prediction_set = []
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     train_error_set, test_error_set = [], []
-    prediction_set,actual = [],[]
 
-    for i in range(epochs):
+    for i in tqdm(range(epochs)):
         # Batch
         for start, end in zip(range(0, len(X_[0]), batch_size), range(batch_size, len(X_[0]), batch_size)):
             if start+batch_size < len(X_[0]):
                 train_op.run(feed_dict={x: X_[0][start:end], y_: Y_[0][start:end]})
             else: 
                 train_op.run(feed_dict={x: X_[0][start:len(X_[0])], y_: Y_[0][start:len(Y_[0])]})
-
-        # train_op.run(feed_dict={x:X_[0],y_:Y_[0]})
-        
+        # calculate loss
         train_error = loss.eval(feed_dict={x: X_[0], y_: Y_[0]})
         train_error_set.append(train_error)
         test_error = loss.eval(feed_dict={x: X_[1], y_: Y_[1]})
         test_error_set.append(test_error)
-    #     prediction_set.append(np.squeeze(y.eval(feed_dict = {x: predict_set})))
-    #     for j in range(prediction_set):
-    #         prediction_set[j] = prediction_set[j] * np.std(prediction_set,axis = 0) + np.mean(prediction_set, axis = 0)
-    # actual = np.squeeze(np.asarray(actual_set))
-        
+    #predictions
+    prediction_set=(sess.run(logits,feed_dict={x:prediciton}))
+
 
 # print(train_acc_set)
 # print('-')
@@ -127,17 +153,8 @@ with tf.Session() as sess:
 
 # plot learning curves
 plt.figure(1)
-plt.plot(range(epochs), train_error_set, label ='Train Loss')
-plt.plot(range(epochs), test_error_set, label = 'Test Loss')
+plt.plot(range(epochs), train_error_set[i], label ='Train Loss')
+plt.plot(range(epochs), test_error_set[i], label = 'Test Loss')
 plt.xlabel(str(epochs) + ' iterations')
 plt.ylabel('Train/Test Loss')
 plt.legend()
-plt.show()
-
-# plt.figure(2)
-# plt.scatter(range(50), prediction_set[:50])
-# plt.plot(range(50), prediction_set[:50], label="prediction")
-# plt.scatter(range(50), actual[:50])
-# plt.plot(range(50), actual[:50], label="actual")
-# plt.legend()
-# plt.show()

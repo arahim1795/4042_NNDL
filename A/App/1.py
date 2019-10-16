@@ -110,6 +110,7 @@ def nn_model(train_data, test_data):
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_, logits=logits)
     loss = tf.reduce_mean(cross_entropy)
 
+
     loss = tf.reduce_mean(loss + (decay * tf.nn.l2_loss(logits)))
 
     # minimise loss
