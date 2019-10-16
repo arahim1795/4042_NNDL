@@ -1,15 +1,14 @@
 import math
+import matplotlib.pylab as plt
 import numpy as np
-import pylab as plt
-import random
 from sklearn.utils import gen_batches
 import tensorflow as tf
-from tqdm import tqdm
-
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-# * Hyper-Parameters
+# hyper-parameters
+np.random.seed(291)
+
 FEATURE_INPUT = 7
 
 learning_rate = math.pow(10, -3)
@@ -20,10 +19,8 @@ seed = 10
 np.random.seed(seed)
 decay = math.pow(10, -3)
 
-random.seed(291)
 
-
-# * Function
+# function
 def scale(data):
     data_scaled = (data - np.mean(data, axis=0)) / np.std(data, axis=0)
     return data_scaled
@@ -44,8 +41,6 @@ def process_data(file):
 
 
 def randomise_data(data):
-    np.random.seed(291)
-
     idx = np.arange(len(data[0]))
     np.random.shuffle(idx)
 
@@ -94,7 +89,7 @@ def nn_model(train_data, test_data, predict_train_data):
         tf.truncated_normal(
             [FEATURE_INPUT, num_neurons], stddev=1.0 / math.sqrt(float(FEATURE_INPUT))
         ),
-        name="one_weights"
+        name="one_weights",
     )
     layer_1_biases = tf.Variable(tf.zeros([num_neurons]), name="one_biases")
     layer_1_var = tf.matmul(x, layer_1_weights) + layer_1_biases
@@ -106,7 +101,7 @@ def nn_model(train_data, test_data, predict_train_data):
         tf.truncated_normal(
             [num_neurons, 1], stddev=1.0 / math.sqrt(float(num_neurons))
         ),
-        name="final_weights"
+        name="final_weights",
     )
     layer_final_biases = tf.Variable(tf.zeros([1]), name="final_biases")
     logits = tf.matmul(layer_1_output, layer_final_weights) + layer_final_biases
@@ -125,10 +120,12 @@ def nn_model(train_data, test_data, predict_train_data):
         sess.run(tf.global_variables_initializer())
         train_error_set, test_error_set = [], []
 
-        for i in tqdm(range(epochs)):
-            batched_train_data = process_data_batch(train_data, batch_size)
-            # batch train
-            for data in batched_train_data:
+        for i in range(epochs):
+            # batching
+            batched_data = process_data_batch(train_data, batch_size)
+
+            # train
+            for data in batched_data:
                 train_op.run(feed_dict={x: data[0], y_: data[1]})
 
             # test
@@ -154,23 +151,22 @@ def nn_model(train_data, test_data, predict_train_data):
     return dataset
 
 
-# TODO: complete this stuff
 def export_data(dataset):
-
-     # * Export Accuracies
-    file = open("../Out/1-accuracy.csv","w") 
-    with open("../Out/1-accuracy.csv", "w") as f:
+    # export accuracies
+    filename = "../Out/1-accuracy.csv"
+    with open(filename, "w") as f:
         f.write("iter,tr-acc,te-acc\n")
-        for i in range(0, epochs,250):
-            f.write("%s,%s,%s\n" % (str(i), str(dataset[2][0][i]), str(dataset[2][1][i])))
+        for i in range(0, epochs, 250):
+            f.write(
+                "%s,%s,%s\n" % (str(i), str(dataset[2][0][i]), str(dataset[2][1][i]))
+            )
 
-    # TODO: export to csv, png (16 x 8)
     fig1 = plt.figure(1)
     plt.plot(range(epochs), dataset[2][0], label="Train Loss")
     plt.plot(range(epochs), dataset[2][1], label="Test Loss")
     plt.xlabel(str(epochs) + " iterations")
     plt.ylabel("Train/Test Loss")
-    plt.ylim(0,0.03)
+    plt.ylim(0, 0.03)
     plt.legend()
     fig1.savefig("../Out/1_a.png")
 
@@ -185,16 +181,21 @@ def export_data(dataset):
     fig2.savefig("../Out/1_b.png")
 
 
-# * Data Handler
-file_train = "../Data/train_data.csv"
-file_test = "../Data/test_data.csv"
+def main():
+    # process data
+    file_train = "../Data/train_data.csv"
+    file_test = "../Data/test_data.csv"
 
-train_data = process_data(file_train)
-test_data = process_data(file_test)
+    train_data = process_data(file_train)
+    test_data = process_data(file_test)
 
-sampled_data = data_sampling(train_data)
+    sampled_data = data_sampling(train_data)
 
-# * Execution
-dataset = nn_model(train_data, test_data, sampled_data)
+    # execute model
+    dataset = nn_model(train_data, test_data, sampled_data)
 
-export_data(dataset)
+    export_data(dataset)
+
+
+if __name__ == "__main__":
+    main()
