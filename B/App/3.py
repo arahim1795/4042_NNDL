@@ -2,7 +2,6 @@ import math
 import multiprocessing as mp
 import numpy as np
 import pylab as plt
-import random
 from sklearn.utils import gen_batches
 import tensorflow as tf
 import time
@@ -15,11 +14,10 @@ np.random.seed(291)
 FEATURE_INPUT = [7, 6]
 
 learning_rate = math.pow(10, -3)
-epochs = 1000
+epochs = 50000
 num_neurons = 10
 batch_size = 8
 decay = math.pow(10, -3)
-random.seed(291)
 
 
 # * Function
@@ -144,6 +142,16 @@ def nn_model(train_data, test_data, FEATURE_INPUT):
                 l2_loss.eval(feed_dict={x: test_data[0], y_: test_data[1]})
             )
 
+            if (i % 1000) == 0:
+                print(
+                    "epoch: "
+                    + str(i)
+                    + " tr-loss: "
+                    + str(train_loss[i])
+                    + " te-less: "
+                    + str(test_loss[i])
+                )
+
             # randomise
             train_data = randomise_data(train_data)
             per_epoch_time.append(time.time() - start_time)
@@ -211,7 +219,7 @@ def export_data(dataset, feature_input):
 
 def main():
     # setup multiprocessing
-    num_threads = mp.cpu_count() - 1
+    num_threads = mp.cpu_count() - 2
     p = mp.Pool(processes=num_threads)
 
     # process data
@@ -222,28 +230,28 @@ def main():
     train_data = process_data(file_train)
     test_data = process_data(file_test)
 
-    # drop one feature
-    dropped_train_dataset, dropped_test_dataset = [], []
-    for i in range(FEATURE_INPUT[0]):
-        dropped_train_dataset.append(process_drop_feature(train_data, i))
-        dropped_test_dataset.append(process_drop_feature(test_data, i))
+    # # drop one feature
+    # dropped_train_dataset, dropped_test_dataset = [], []
+    # for i in range(FEATURE_INPUT[0]):
+    #     dropped_train_dataset.append(process_drop_feature(train_data, i))
+    #     dropped_test_dataset.append(process_drop_feature(test_data, i))
 
-    # zipping dataset
-    zipped_feature = []
-    for i in range(FEATURE_INPUT[0]):
-        zipped_feature.append(FEATURE_INPUT[0] - 1)
+    # # zipping dataset
+    # zipped_feature = []
+    # for i in range(FEATURE_INPUT[0]):
+    #     zipped_feature.append(FEATURE_INPUT[0] - 1)
 
-    # execute RFE on 7 features
-    dataset = p.starmap(
-        nn_model, zip(dropped_train_dataset, dropped_test_dataset, zipped_feature)
-    )
+    # # execute RFE on 7 features
+    # dataset = p.starmap(
+    #     nn_model, zip(dropped_train_dataset, dropped_test_dataset, zipped_feature)
+    # )
 
-    export_data(dataset, FEATURE_INPUT[0])
+    # export_data(dataset, FEATURE_INPUT[0])
 
     # process data
-    #  remove column 1: TOEFL
-    dropped_one_train = process_drop_feature(train_data, 1)
-    dropped_one_test = process_drop_feature(test_data, 1)
+    # remove column 6: Research
+    dropped_one_train = process_drop_feature(train_data, 6)
+    dropped_one_test = process_drop_feature(test_data, 6)
 
     # drop one feature
     dropped_train_dataset, dropped_test_dataset = [], []
