@@ -1,176 +1,365 @@
-#
-# Project 1, starter code part a
-#
 import math
 import tensorflow as tf
-import numpy as np
 import matplotlib.pylab as plt
-import random
-from tqdm import tqdm
+import multiprocessing as mp
+import numpy as np
+from sklearn.model_selection import KFold
+from sklearn.utils import gen_batches
+import time
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-# scale data
-def scale(X, X_min, X_max):
-    return (X - X_min)/(X_max-X_min)
+# hyper-parameters
+np.random.seed(291)
 
-# * Parameters
-# - input: LB to Tendency
-FEATURE_INPUT = 21
-# - NSP = 1, 2, 3
-NUM_CLASSES = 3
+FEATURE_INPUT = 21  # input: LB to Tendency
+NUM_CLASSES = 3  # NSP = 1, 2, 3
 
-learning_rate = 0.01
-epochs = 100000
-batch_size = [4,8,16,32,64]
-num_neurons = 10
-seed = 10
-np.random.seed(seed)
+batches = [4, 8, 16, 32, 64]
 decay = math.pow(10, -6)
-
-# * Data Pre-Processing / Handler
-# X_: inputs, Y_: NSP
-# index 0-4: train, 5: test
-X__, Y__ = [], []
-X_, Y_ = [], []
-batch_X, batch_Y = [], []
-
-# Function for creating batches
-# inputs are the inputs, outputs and batch size
-# creates (num_items/batch_size) batches each containing batch_size items
-# except for last one: size of (num_items % batch_size)
+epochs = 20000
+k_value = 5
+learning_rate = 0.01
+num_neurons = 10
 
 
-# def create_batch(X_, Y_, batch_size):
-#     batch_X, batch_Y = [], []
-#     for i in range(1):
-#         for j in range(0, len(X_[i]), batch_size):
-#             if j + batch_size < len(X_[i]):
-#                 batch_X.append(X_[i][j:j+batch_size])
-#                 batch_Y.append(Y_[i][j:j+batch_size])
-#             else:
-#                 batch_X.append(X_[i][j:len(X_[i])])
-#                 batch_Y.append(Y_[i][j:len(Y_[i])])
-
-#     return batch_X, batch_Y
-
-# # * load folds
-dataset = []
-for i in range(5):
-    filename = 'input/A/fold_' + str(i) + '.csv'
-    dataset.append(np.genfromtxt(filename, delimiter=','))
+# functions
+def scale(X, X_min, X_max):
+    return (X - X_min) / (X_max - X_min)
 
 
-# * form one-left-out processed datasets
-def leave_one_out_dataset(k_value, data):
-    # create data structure
-    leave_one_out = [None] * k_value
-    for i in range(k_value):
-        leave_one_out[i] = [None] * 2
-        for j in range(2):
-            leave_one_out[i][j] = [None] * 2
+def process_data(file):
+    # parameters
+    processed_data = []
 
-    # add data to structure
-    for i in range(k_value):
-        leave_one_out[i][0][0] = np.zeros(shape=(1, 23))
-        leave_one_out[i][1][0] = np.zeros(shape=(1, 23))
-        for j in range(k_value):
-            if i == j:
-                leave_one_out[i][1][0] = np.concatenate(
-                    (leave_one_out[i][1][0], data[j])
-                    )
-                continue
-            leave_one_out[i][0][0] = np.concatenate((leave_one_out[i][0][0], data[j]))
-    
-    # remove placeholder entry
-    for i in range(k_value):
-        leave_one_out[i][0][0] = leave_one_out[i][0][0][1:]
-        leave_one_out[i][1][0] = leave_one_out[i][1][0][1:]
+    # import data
+    raw_data = np.genfromtxt(file, delimiter=",")
 
-    # process data within structure
-    for i in range(k_value):
-        for j in range(2):
-            temp_var = leave_one_out[i][j][0]
-            leave_one_out[i][j][0] = temp_var[:, :FEATURE_INPUT]
-            leave_one_out[i][j][0] = scale(
-                leave_one_out[i][j][0],
-                np.min(leave_one_out[i][j][0], axis=0),
-                np.max(leave_one_out[i][j][0], axis=0)
+    # process X
+    X = raw_data[:, :FEATURE_INPUT]
+    X = scale(X, np.min(X, axis=0), np.max(X, axis=0))
+
+    # process Y
+    Y = raw_data[:, -1].astype(int)
+    Y_one_hot = np.zeros((Y.shape[0], NUM_CLASSES))
+    Y_one_hot[np.arange(Y.shape[0]), Y - 1] = 1
+
+    # append processed data to list
+    processed_data.append(X)
+    processed_data.append(Y_one_hot)
+
+    return processed_data
+
+
+def process_data_k(data):
+    # parameters
+    permutated_train, permutated_test = [], []
+    train_indexes, test_indexes = [], []
+
+    # create index splitter
+    kf = KFold(n_splits=k_value)
+
+    # get splitted index
+    for train, test in kf.split(data[0]):
+        train_indexes.append(train)
+        test_indexes.append(test)
+
+    # append processed data to list
+    for a in range(k_value):
+        train_data, test_data = [], []
+        train_data.append(data[0][train_indexes[a]])
+        train_data.append(data[1][train_indexes[a]])
+        test_data.append(data[0][test_indexes[a]])
+        test_data.append(data[1][test_indexes[a]])
+        permutated_train.append(train_data)
+        permutated_test.append(test_data)
+
+    return permutated_train, permutated_test
+
+
+def process_data_batch(data, batch_size):
+    # parameters
+    entries = len(data[0])
+    batched_data = []
+
+    # slicer
+    slices = gen_batches(entries, batch_size)
+
+    # batching
+    for s in slices:
+        data_store = []
+        data_store.append(data[0][s])
+        data_store.append(data[1][s])
+        batched_data.append(data_store)
+
+    return batched_data
+
+
+def randomise_order(dataset):
+    # generate indexes
+    indexes = np.arange(len(dataset[0]))
+
+    # randomise indexes
+    np.random.shuffle(indexes)
+
+    # randomise dataset order
+    dataset[0] = dataset[0][indexes]
+    dataset[1] = dataset[1][indexes]
+
+    return dataset
+
+
+def nn_model(train_data, test_data, batch_size):
+    # create model
+    x = tf.placeholder(tf.float32, [None, FEATURE_INPUT])
+    y_ = tf.placeholder(tf.float32, [None, NUM_CLASSES])
+
+    # hidden layer 1: relu
+    layer_1_weights = tf.Variable(
+        tf.truncated_normal(
+            [FEATURE_INPUT, num_neurons], stddev=1.0 / math.sqrt(float(FEATURE_INPUT))
+        ),
+        name="one_weights",
+    )
+    layer_1_biases = tf.Variable(tf.zeros([num_neurons]), name="one_biases")
+    layer_1_var = tf.matmul(x, layer_1_weights) + layer_1_biases
+
+    layer_1_output = tf.nn.relu(layer_1_var)
+
+    # final layer: softmax
+    layer_final_weights = tf.Variable(
+        tf.truncated_normal(
+            [num_neurons, NUM_CLASSES], stddev=1.0 / math.sqrt(float(num_neurons))
+        ),
+        name="final_weights",
+    )
+    layer_final_biases = tf.Variable(tf.zeros([NUM_CLASSES]), name="final_biases")
+    logits = tf.matmul(layer_1_output, layer_final_weights) + layer_final_biases
+
+    # regularise (l2)
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_, logits=logits)
+    loss = tf.reduce_mean(cross_entropy)
+    loss = tf.reduce_mean(loss + (decay * tf.nn.l2_loss(logits)))
+
+    # minimise loss
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+    train_op = optimizer.minimize(loss)
+
+    correct_prediction = tf.cast(
+        tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1)), tf.float32
+    )
+    accuracy = tf.reduce_mean(correct_prediction)
+
+    # run model
+    train_acc, test_acc, per_epoch_time = [], [], []
+
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        for i in range(epochs):
+            start_time = time.time()
+            # batching
+            batched_data = process_data_batch(train_data, batch_size)
+
+            # train
+            for data in batched_data:
+                train_op.run(feed_dict={x: data[0], y_: data[1]})
+
+            # evaluate
+            train_acc.append(
+                accuracy.eval(feed_dict={x: train_data[0], y_: train_data[1]})
             )
-            temp_var = temp_var[:, -1].astype(int)
-            Y_one_hot = np.zeros((temp_var.shape[0], NUM_CLASSES))
-            Y_one_hot[np.arange(temp_var.shape[0]), temp_var-1] = 1
-            leave_one_out[i][j][1] = Y_one_hot
+            test_acc.append(
+                accuracy.eval(feed_dict={x: test_data[0], y_: test_data[1]})
+            )
 
-    return leave_one_out
+            if (i % 1000) == 0:
+                print("epoch: ", i, " tr-acc: ", train_acc[i], "te-acc: ", test_acc[i])
 
-test = leave_one_out_dataset(5, dataset)
+            # randomise dataset
+            train_data = randomise_order(train_data)
+            per_epoch_time.append(time.time() - start_time)
 
-# batch_X, batch_Y = create_batch(X_[0], Y_[0], 4)
+    data = []
+    data.append(train_acc)
+    data.append(test_acc)
+    data.append(per_epoch_time)
 
-# # * Graph Start
-# # Create the model
-# x = tf.placeholder(tf.float32, [None, FEATURE_INPUT])
-# y_ = tf.placeholder(tf.float32, [None, NUM_CLASSES])
+    return data
 
-# # Hidden Layer
-# layer_1_weights = tf.Variable(tf.truncated_normal(
-#     [FEATURE_INPUT, num_neurons], stddev=1.0/math.sqrt(float(FEATURE_INPUT))), name='one_weights')
-# layer_1_biases = tf.Variable(tf.zeros([num_neurons]), name='one_biases')
-# layer_1_var = tf.matmul(x, layer_1_weights) + layer_1_biases
 
-# layer_1_output = tf.nn.relu(layer_1_var)
+def export_data(data):
+    # export accuracies
+    with open("../Out/2_optimal.csv", "w") as f:
+        f.write("iter,tr-acc,te-acc,time\n")
+        for j in range(0, epochs):
+            f.write("%s,%s,%s,%s\n" % (str(j), data[0][j], data[1][j], data[2][j]))
 
-# # Softmax
-# layer_final_weights = tf.Variable(tf.truncated_normal(
-#     [num_neurons, NUM_CLASSES], stddev=1.0/math.sqrt(float(num_neurons))), name='final_weights')
-# layer_final_biases = tf.Variable(tf.zeros([NUM_CLASSES]), name='final_biases')
-# logits = tf.matmul(layer_1_output, layer_final_weights) + layer_final_biases
+    # plotting
+    plt.figure(figsize=(16, 8))
+    fig = plt.figure(1)
+    plt.plot(range(epochs), data[0], label="Train Accuracy", color="#ff0000")
+    plt.plot(range(epochs), data[1], label="Test Accuracy", color="#00ffff")
+    plt.xlabel(str(epochs) + " iterations")
+    plt.ylabel("Train/Test accuracy")
+    plt.legend()
+    fig.savefig("../Out/2_optimal_fig.png")
+    plt.close()
 
-# # Regularisation (L2)
-# cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(
-#     labels=y_, logits=logits)
-# loss = tf.reduce_mean(cross_entropy)
 
-# loss = tf.reduce_mean(loss + (decay*tf.nn.l2_loss(logits)))
+def export_data_batch(data, zipped_batch_size):
+    for i in range(0, len(data), 5):
+        #  mean cross-validation
+        mean_train = (
+            np.array(data[i][0])
+            + np.array(data[i + 1][0])
+            + np.array(data[i + 2][0])
+            + np.array(data[i + 3][0])
+            + np.array(data[i + 4][0])
+        )
 
-# # Minimising Loss
-# optimizer = tf.train.GradientDescentOptimizer(learning_rate)
-# train_op = optimizer.minimize(loss)
+        mean_test = (
+            np.array(data[i][1])
+            + np.array(data[i + 1][1])
+            + np.array(data[i + 2][1])
+            + np.array(data[i + 3][1])
+            + np.array(data[i + 4][1])
+        )
 
-# correct_prediction = tf.cast(
-#     tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1)), tf.float32)
-# accuracy = tf.reduce_mean(correct_prediction)
+        mean_time = (
+            np.array(data[i][2])
+            + np.array(data[i + 1][2])
+            + np.array(data[i + 2][2])
+            + np.array(data[i + 3][2])
+            + np.array(data[i + 4][2])
+        )
 
-# train_acc_set, loss_set, test_acc_set = [], [], []
+        mean_train = np.divide(mean_train, 5.0)
+        mean_test = np.divide(mean_test, 5.0)
+        mean_time = np.divide(mean_time, 5.0)
 
-# with tf.Session() as sess:
-#     sess.run(tf.global_variables_initializer())
-#     train_acc, test_acc = [], []
-#     for j in range(epochs):
-#         for i in range(len(batch_X)):
-#            # Batch train
-#             for start, end in zip(range(0, len(X_[0]), batch_size), range(batch_size, len(X_[0]), batch_size)):
-#                 if start+batch_size < len(X_[0]):
-#                     train_op.run(feed_dict={x: X_[0][start:end], y_: Y_[0][start:end]})
-#                 else: 
-#                     train_op.run(feed_dict={x: X_[0][start:len(X_[0])], y_: Y_[0][start:len(Y_[0])]})
-#             # evalutation
-#             train_acc.append(accuracy.eval(feed_dict={x: batch_X[i], y_: batch_Y[i]}))
-#             # test_acc.append(accuracy.eval(feed_dict={x: X_[1], y_: Y_[1]}))
-#             if j%1000 == 0:
-#                 print('iter %d: tr-acc %g, te-acc %g' % (j, train_acc[j], test_acc[j]))
-#     train_acc_set.append(train_acc)
-#     test_acc_set.append(test_acc)
-# print(train_acc_set)
-# print('-')
-# print(test_acc_set)
+        # export data
+        with open("../Out/2_b" + str(zipped_batch_size[i]) + ".csv", "w") as f:
+            f.write("iter,tr-acc,te-acc,time\n")
+            for j in range(0, epochs):
+                f.write(
+                    "%s,%s,%s,%s\n"
+                    % (str(j), mean_train[j], mean_test[j], mean_time[j])
+                )
 
-# # plot learning curves
-# plt.figure(1)
-# plt.plot(range(epochs), train_acc, label ='Train Accuracy')
-# plt.plot(range(epochs), test_acc, label = 'Test Accuracy')
-# plt.xlabel(str(epochs) + ' iterations')
-# plt.ylabel('Train/Test accuracy')
-# plt.legend()
-# plt.show()
+        # plotting
+        fig = plt.figure(figsize=(16, 8))
+        plt.plot(range(epochs), mean_train, label="mean_train", color="#ff0000")
+        plt.plot(range(epochs), mean_test, label="mean_test", color="#00ffff")
+
+        plt.xlabel(str(epochs) + " iterations")
+        plt.ylabel("Train/Test accuracy")
+        plt.legend()
+        fig.savefig("../Out/2_b" + str(zipped_batch_size[i]) + ".png")
+        plt.close()
+
+
+def extract_useful_data(file_1, file_2, file_3, file_4, file_5):
+    # import raw data
+    raw_data_1 = np.genfromtxt(file_1, delimiter=",")[1:]
+    raw_data_2 = np.genfromtxt(file_2, delimiter=",")[1:]
+    raw_data_3 = np.genfromtxt(file_3, delimiter=",")[1:]
+    raw_data_4 = np.genfromtxt(file_4, delimiter=",")[1:]
+    raw_data_5 = np.genfromtxt(file_5, delimiter=",")[1:]
+    # print(raw_data_1[0])
+
+    # get test accs
+    test_acc = []
+    test_acc.append(np.delete(raw_data_1, [0, 1, 3], axis=1).max())
+    test_acc.append(np.delete(raw_data_2, [0, 1, 3], axis=1).max())
+    test_acc.append(np.delete(raw_data_3, [0, 1, 3], axis=1).max())
+    test_acc.append(np.delete(raw_data_4, [0, 1, 3], axis=1).max())
+    test_acc.append(np.delete(raw_data_5, [0, 1, 3], axis=1).max())
+    test_acc = np.array(test_acc)
+
+    # get average time
+    time_1 = np.delete(raw_data_1, [0, 1, 2], axis=1)
+    time_2 = np.delete(raw_data_2, [0, 1, 2], axis=1)
+    time_3 = np.delete(raw_data_3, [0, 1, 2], axis=1)
+    time_4 = np.delete(raw_data_4, [0, 1, 2], axis=1)
+    time_5 = np.delete(raw_data_5, [0, 1, 2], axis=1)
+
+    timing = []
+    timing.append(np.average(time_1))
+    timing.append(np.average(time_2))
+    timing.append(np.average(time_3))
+    timing.append(np.average(time_4))
+    timing.append(np.average(time_5))
+    timing = np.array(timing)
+
+    filename = "../Out/2_max_mean_test.csv"
+    with open(filename, "w") as f:
+        f.write("batch,mean test\n")
+        for i in range(len(test_acc)):
+            f.write("%s,%s\n" % (str(batches[i]), test_acc[i]))
+
+    filename = "../Out/2_avg_time.csv"
+    with open(filename, "w") as f:
+        f.write("batch,avg time\n")
+        for i in range(len(timing)):
+            f.write("%s,%s\n" % (str(batches[i]), timing[i]))
+
+    fig = plt.figure(figsize=(16, 8))
+    plt.plot(batches, test_acc, label="max_acc", color="#ff0000")
+    plt.xticks(batches)
+    plt.legend()
+    fig.savefig("../Out/2_max_mean_test.png")
+    plt.close()
+
+    fig = plt.figure(figsize=(16, 8))
+    plt.plot(batches, timing, label="avg_time", color="#ff0000")
+    plt.xticks(batches)
+    plt.legend()
+    fig.savefig("../Out/2_avg_time.png")
+    plt.close()
+
+
+def main():
+    # process data
+    file_train = "../Data/train_data.csv"
+    file_test = "../Data/test_data.csv"
+
+    train_data = process_data(file_train)
+    test_data = process_data(file_test)
+
+    k_train, k_test = process_data_k(train_data)
+
+    # setup multiprocessing
+    num_threads = mp.cpu_count() - 1
+    p = mp.Pool(processes=num_threads)
+
+    # zipping dataset
+    zipped_batch_size = []
+    zipped_k_train, zipped_k_test = [], []
+    for i in range(len(batches)):
+        for j in range(k_value):
+            zipped_batch_size.append(batches[i])
+            zipped_k_train.append(k_train[j])
+            zipped_k_test.append(k_test[j])
+
+    # execute k-fold
+    dataset = p.starmap(nn_model, zip(zipped_k_train, zipped_k_test, zipped_batch_size))
+
+    # export data meaningfully
+    export_data_batch(dataset, zipped_batch_size)
+
+    file_1 = "../Out/2_b4.csv"
+    file_2 = "../Out/2_b8.csv"
+    file_3 = "../Out/2_b16.csv"
+    file_4 = "../Out/2_b32.csv"
+    file_5 = "../Out/2_b64.csv"
+    extract_useful_data(file_1, file_2, file_3, file_4, file_5)
+
+    # pptimal batch (size = 4)
+    optimal_size = 4
+    optimal_acc = nn_model(train_data, test_data, optimal_size)
+
+    export_data(optimal_acc)
+
+
+if __name__ == "__main__":
+    main()
