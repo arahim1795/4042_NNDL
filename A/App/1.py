@@ -8,7 +8,7 @@ import time
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 # hyper-parameters
-np.random.seed(291)
+np.random.seed(10)
 
 FEATURE_INPUT = 21  # input: LB to Tendency
 NUM_CLASSES = 3  # NSP = 1, 2, 3
@@ -110,7 +110,6 @@ def nn_model(train_data, test_data):
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_, logits=logits)
     loss = tf.reduce_mean(cross_entropy)
 
-
     loss = tf.reduce_mean(loss + (decay * tf.nn.l2_loss(logits)))
 
     # minimise loss
@@ -128,7 +127,9 @@ def nn_model(train_data, test_data):
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         for i in range(epochs):
+            # start record time
             start_time = time.time()
+
             # batching
             batched_data = process_data_batch(train_data)
 
@@ -144,11 +145,10 @@ def nn_model(train_data, test_data):
                 accuracy.eval(feed_dict={x: test_data[0], y_: test_data[1]})
             )
 
-            if (i % 1000) == 0:
-                print("epoch: ", i, " tr-acc: ", train_acc[i], "te-acc: ", test_acc[i])
-
             # randomise dataset
             train_data = randomise_order(train_data)
+
+            # end record time
             per_epoch_time.append(time.time() - start_time)
 
     data = []
@@ -159,24 +159,70 @@ def nn_model(train_data, test_data):
     return data
 
 
-def export_data(data):
+def export_data(data, file):
     # export values
-    with open("../Out/1.csv", "w") as f:
-        f.write("iter,tr-acc,te-acc,time\n")
+    with open(file, "w") as f:
+        f.write("epoch,train accuracy,test accuracy,time per epoch\n")
         for i in range(0, epochs):
             f.write(
                 "%s,%s,%s,%s\n"
                 % (str(i), str(data[0][i]), str(data[1][i]), str(data[2][i]))
             )
 
-    # plotting
-    fig = plt.figure(figsize=(16, 8))
-    plt.plot(range(epochs), data[0], label="Train Accuracy")
-    plt.plot(range(epochs), data[1], label="Test Accuracy")
-    plt.xlabel(str(epochs) + " iterations")
-    plt.ylabel("Train/Test accuracy")
-    plt.legend()
-    fig.savefig("../Out/1_fig.png")
+
+def roundup_hundreds(value):
+    return int(math.ceil(value / 100.00)) * 100
+
+
+def extract_data(file):
+    # find max test accuracy (i.e. test error convergence)
+    raw_data = np.genfromtxt(file, delimiter=",")
+
+    # remove header
+    clean_data = np.array(raw_data[1:])
+
+    # get max test index and value
+    max_test_idx = clean_data.argmax(axis=0)[2]
+    with open("../Out/csv/1_max.csv", "w") as f:
+        f.write("epoch,train accuracy,test_accuracy\n")
+        entry = clean_data[max_test_idx]
+        f.write("%s,%s,%s\n" % (entry[0], entry[1], entry[2]))
+
+    # process data
+    train_data = np.delete(clean_data, [0, 2, 3], axis=1)
+    test_data = np.delete(clean_data, [0, 1, 3], axis=1)
+
+    # plot to nearest hundreds
+    rounded_epoch = roundup_hundreds(max_test_idx)
+
+    fig, ax = plt.subplots(figsize=(16, 8))
+    ax.set_ylabel("Accuracy")
+    ax.set_xlabel("Epoch")
+    ax.plot(
+        range(rounded_epoch),
+        train_data[0:rounded_epoch],
+        label="Train Accuracy",
+        color="#0000FF",
+    )
+    ax.plot(
+        range(rounded_epoch),
+        test_data[0:rounded_epoch],
+        label="Test Accuracy",
+        color="#FF0000",
+    )
+    ax.legend()
+    fig.savefig("../Out/graph/1_epoch_" + str(rounded_epoch) + ".png")
+    plt.close()
+
+    # plot to max epoch
+    fig, ax = plt.subplots(figsize=(16, 8))
+    ax.set_ylabel("Accuracy")
+    ax.set_xlabel("Epoch")
+    ax.plot(range(epochs), train_data, label="Train Accuracy", color="#0000FF")
+    ax.plot(range(epochs), test_data, label="Test Accuracy", color="#FF0000")
+    ax.legend()
+    fig.savefig("../Out/graph/1_epoch_" + str(epochs) + ".png")
+    plt.close()
 
 
 def main():
@@ -190,7 +236,9 @@ def main():
     # execute model
     dataset = nn_model(train_data, test_data)
 
-    export_data(dataset)
+    file = "../Out/csv/1.csv"
+    export_data(dataset, file)
+    extract_data(file)
 
 
 if __name__ == "__main__":
