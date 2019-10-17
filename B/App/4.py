@@ -564,7 +564,7 @@ def export_data(dataset_zero,dataset_one,dataset_one_drop,dataset_two,dataset_tw
     plt.ylabel("Train Loss")
     plt.legend()
     plt.ylim(0.002,0.02)
-    fig1.savefig("../Out/4_train.png")
+    fig2.savefig("../Out/4_train.png")
 
     filename = "../Out/4.csv"
     with open(filename, "w") as f:
