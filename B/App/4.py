@@ -527,7 +527,7 @@ def nn_model_5d(train_data, test_data):
 
     return data
 
-def plot_all(dataset_zero,dataset_one,dataset_one_drop,dataset_two,dataset_two_drop):
+def export_data(dataset_zero,dataset_one,dataset_one_drop,dataset_two,dataset_two_drop):
     test_accuracies = []
     test_accuracies.append(dataset_zero[1])
     test_accuracies.append(dataset_one[1])
@@ -548,7 +548,6 @@ def plot_all(dataset_zero,dataset_one,dataset_one_drop,dataset_two,dataset_two_d
     fig1.savefig("../Out/4_test.png")
 
     train_accuracies = []
-    train_accuracies.append()
     train_accuracies.append(dataset_zero[0])
     train_accuracies.append(dataset_one[0])
     train_accuracies.append(dataset_one_drop[0])
@@ -566,6 +565,15 @@ def plot_all(dataset_zero,dataset_one,dataset_one_drop,dataset_two,dataset_two_d
     plt.legend()
     plt.ylim(0.002,0.02)
     fig1.savefig("../Out/4_train.png")
+
+    filename = "../Out/4.csv"
+    with open(filename, "w") as f:
+        f.write("iter,3layer,4layer,4layer_dropout,5layer,5layer_dropout\n")
+        for i in range(0, epochs):
+            f.write(
+                "%s,%s,%s,%s,%s,%s\n"
+                % (str(i), test_accuracies[0][i],test_accuracies[1][i],test_accuracies[2][i],test_accuracies[3][i],test_accuracies[4][i])
+            )
 
 def main():
     # setup multiprocessing
@@ -611,7 +619,7 @@ def main():
         nn_model_5d, zip(dropped_two_train, dropped_two_test)
     )
 
-    plot_all(dataset_zero[0],dataset_one[0],dataset_one_drop[0],dataset_two[0],dataset_two_drop[0])
+    export_data(dataset_zero[0],dataset_one[0],dataset_one_drop[0],dataset_two[0],dataset_two_drop[0])
 
 
 
