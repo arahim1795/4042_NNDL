@@ -10,14 +10,14 @@ import time
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 # hyper-parameters
-np.random.seed(291)
+np.random.seed(10)
 
 FEATURE_INPUT = 21  # input: LB to Tendency
 NUM_CLASSES = 3  # NSP = 1, 2, 3
 
-batch = 4
+batch = 8
 decay = math.pow(10, -6)
-epochs = 20000
+epochs = 19700
 k_value = 5
 learning_rate = 0.01
 num_neurons = [5, 10, 15, 20, 25]
@@ -172,9 +172,6 @@ def nn_model(train_data, test_data, num_neurons):
                 accuracy.eval(feed_dict={x: test_data[0], y_: test_data[1]})
             )
 
-            if (i % 1000) == 0:
-                print("epoch: ", i, " tr-acc: ", train_acc[i], "te-acc: ", test_acc[i])
-
             # randomise dataset
             train_data = randomise_order(train_data)
             per_epoch_time.append(time.time() - start_time)
@@ -187,50 +184,31 @@ def nn_model(train_data, test_data, num_neurons):
     return data
 
 
-def export_data(data):
-    # export accuracies
-    with open("../Out/3_optimal.csv", "w") as f:
-        f.write("iter,tr-acc,te-acc,time\n")
-        for j in range(0, epochs):
-            f.write("%s,%s,%s,%s\n" % (str(j), data[0][j], data[1][j], data[2][j]))
-
-    # plotting
-    plt.figure(figsize=(16, 8))
-    fig = plt.figure(1)
-    plt.plot(range(epochs), data[0], label="Train Accuracy", color="#ff0000")
-    plt.plot(range(epochs), data[1], label="Test Accuracy", color="#00ffff")
-    plt.xlabel(str(epochs) + " iterations")
-    plt.ylabel("Train/Test accuracy")
-    plt.legend()
-    fig.savefig("../Out/3_optimal_fig.png")
-    plt.close()
-
-
-def export_data_batch(data, zipped_num_neurons):
-    for i in range(0, len(data), 5):
+def export_datasets(dataset, zipped_neurons):
+    for i in range(0, len(dataset), 5):
         #  mean cross-validation
         mean_train = (
-            np.array(data[i][0])
-            + np.array(data[i + 1][0])
-            + np.array(data[i + 2][0])
-            + np.array(data[i + 3][0])
-            + np.array(data[i + 4][0])
+            np.array(dataset[i][0])
+            + np.array(dataset[i + 1][0])
+            + np.array(dataset[i + 2][0])
+            + np.array(dataset[i + 3][0])
+            + np.array(dataset[i + 4][0])
         )
 
         mean_test = (
-            np.array(data[i][1])
-            + np.array(data[i + 1][1])
-            + np.array(data[i + 2][1])
-            + np.array(data[i + 3][1])
-            + np.array(data[i + 4][1])
+            np.array(dataset[i][1])
+            + np.array(dataset[i + 1][1])
+            + np.array(dataset[i + 2][1])
+            + np.array(dataset[i + 3][1])
+            + np.array(dataset[i + 4][1])
         )
 
         mean_time = (
-            np.array(data[i][2])
-            + np.array(data[i + 1][2])
-            + np.array(data[i + 2][2])
-            + np.array(data[i + 3][2])
-            + np.array(data[i + 4][2])
+            np.array(dataset[i][2])
+            + np.array(dataset[i + 1][2])
+            + np.array(dataset[i + 2][2])
+            + np.array(dataset[i + 3][2])
+            + np.array(dataset[i + 4][2])
         )
 
         mean_train = np.divide(mean_train, 5.0)
@@ -238,54 +216,99 @@ def export_data_batch(data, zipped_num_neurons):
         mean_time = np.divide(mean_time, 5.0)
 
         # export data
-        with open("../Out/3_n" + str(zipped_num_neurons[i]) + ".csv", "w") as f:
-            f.write("iter,tr-acc,te-acc,time\n")
+        with open("../Out/csv/3_neurons_" + str(zipped_neurons[i]) + ".csv", "w") as f:
+            f.write("epoch,train accuracy,test accuracy,time per epoch\n")
             for j in range(0, epochs):
                 f.write(
                     "%s,%s,%s,%s\n"
                     % (str(j), mean_train[j], mean_test[j], mean_time[j])
                 )
 
-        # plotting
-        fig = plt.figure(1, figsize=(16, 8))
-        plt.plot(range(epochs), mean_train, label="mean_train", color="#ff0000")
-        plt.plot(range(epochs), mean_test, label="mean_test", color="#00ffff")
-        plt.xlabel(str(epochs) + " iterations")
-        plt.ylabel("Train/Test accuracy")
-        plt.legend()
-        fig.savefig("../Out/3_n" + str(zipped_num_neurons[i]) + ".png")
-        plt.close()
+
+def extract_data(file_1, file_2, file_3, file_4, file_5):
+    # parameters
+    colors = ["#FF0000", "#0000FF", "#008000", "#FFA500", "#323232"]
+
+    # find per batch max mean test accuracy (i.e. test error convergence)
+    datasets = []
+    datasets.append(np.genfromtxt(file_1, delimiter=",")[1:])
+    datasets.append(np.genfromtxt(file_2, delimiter=",")[1:])
+    datasets.append(np.genfromtxt(file_3, delimiter=",")[1:])
+    datasets.append(np.genfromtxt(file_4, delimiter=",")[1:])
+    datasets.append(np.genfromtxt(file_5, delimiter=",")[1:])
+
+    # get max test index and value
+    max_mean_test_idxs = []
+    for i in range(len(datasets)):
+        max_mean_test_idxs.append(datasets[i].argmax(axis=0)[2])
+
+    max_mean_tests, corresp_train = [], []
+    with open("../Out/csv/3_max.csv", "w") as f:
+        f.write("batch,epoch,train accuracy,test_accuracy\n")
+        for i in range(len(max_mean_test_idxs)):
+            entry = datasets[i][max_mean_test_idxs[i]]
+            f.write("%s,%s,%s,%s\n" % (num_neurons[i], entry[0], entry[1], entry[2]))
+            max_mean_tests.append(entry[2])
+            corresp_train.append(entry[1])
+
+    fig, ax = plt.subplots(figsize=(16, 8))
+    ax.set_ylabel("Accuracy")
+    ax.set_xlabel("Number of Neurons")
+    ax.set_xticks(num_neurons)
+    ax.set_xticklabels(num_neurons)
+    ax.plot(
+        num_neurons, corresp_train, label="Correponding Train Accuracy", color="#0000FF"
+    )
+    ax.plot(
+        num_neurons, max_mean_tests, label="Max Mean Test Accuracy", color="#FF0000"
+    )
+    ax.legend()
+    fig.savefig("../Out/graph/3_max.png")
+    plt.close()
+
+    train_dataset, test_dataset = [], []
+    for i in range(len(datasets)):
+        train_dataset.append(np.delete(datasets[i], [0, 2, 3], axis=1))
+        test_dataset.append(np.delete(datasets[i], [0, 1, 3], axis=1))
+
+    # plot all train together
+    fig, ax = plt.subplots(figsize=(16, 8))
+    ax.set_ylabel("Accuracy")
+    ax.set_xlabel("Epoch")
+    for i in range(len(datasets)):
+        name = str(num_neurons[i]) + " Neurons"
+        ax.plot(range(epochs), train_dataset[i], label=name, color=colors[i])
+    ax.legend()
+    fig.savefig("../Out/graph/3_train.png")
+    plt.close()
+
+    # plot all test together
+    fig, ax = plt.subplots(figsize=(16, 8))
+    ax.set_ylabel("Accuracy")
+    ax.set_xlabel("Epoch")
+    for i in range(len(datasets)):
+        name = str(num_neurons[i]) + " Neurons"
+        ax.plot(range(epochs), test_dataset[i], label=name, color=colors[i])
+    ax.legend()
+    fig.savefig("../Out/graph/3_test.png")
+    plt.close()
 
 
-def extract_useful_data(file_1, file_2, file_3, file_4, file_5):
-    # import raw data
-    raw_data_1 = np.genfromtxt(file_1, delimiter=",")[1:]
-    raw_data_2 = np.genfromtxt(file_2, delimiter=",")[1:]
-    raw_data_3 = np.genfromtxt(file_3, delimiter=",")[1:]
-    raw_data_4 = np.genfromtxt(file_4, delimiter=",")[1:]
-    raw_data_5 = np.genfromtxt(file_5, delimiter=",")[1:]
-    # print(raw_data_1[0])
+def export_optimal(dataset):
+    with open("../Out/csv/3_optimal.csv", "w") as f:
+        f.write("epoch,train accuracy,test accuracy,time per epoch\n")
+        for i in range(0, epochs):
+            f.write(
+                "%s,%s,%s,%s\n" % (str(i), dataset[0][i], dataset[1][i], dataset[2][i])
+            )
 
-    # get test accs
-    test_acc = []
-    test_acc.append(np.delete(raw_data_1, [0, 1, 3], axis=1).max())
-    test_acc.append(np.delete(raw_data_2, [0, 1, 3], axis=1).max())
-    test_acc.append(np.delete(raw_data_3, [0, 1, 3], axis=1).max())
-    test_acc.append(np.delete(raw_data_4, [0, 1, 3], axis=1).max())
-    test_acc.append(np.delete(raw_data_5, [0, 1, 3], axis=1).max())
-    test_acc = np.array(test_acc)
-
-    filename = "../Out/3_max_mean_test.csv"
-    with open(filename, "w") as f:
-        f.write("batch,mean test\n")
-        for i in range(len(test_acc)):
-            f.write("%s,%s\n" % (str(num_neurons[i]), test_acc[i]))
-
-    fig = plt.figure(figsize=(16, 8))
-    plt.plot(num_neurons, test_acc, label="max_acc", color="#ff0000")
-    plt.xticks(num_neurons)
-    plt.legend()
-    fig.savefig("../Out/3_max_mean_test.png")
+    fig, ax = plt.subplots(figsize=(16, 8))
+    ax.set_ylabel("Accuracy")
+    ax.set_xlabel("Epoch")
+    ax.plot(range(epochs), dataset[0], label="Train", color="#0000FF")
+    ax.plot(range(epochs), dataset[1], label="Test", color="#FF0000")
+    ax.legend()
+    fig.savefig("../Out/graph/3_optimal.png")
     plt.close()
 
 
@@ -297,41 +320,39 @@ def main():
     train_data = process_data(file_train)
     test_data = process_data(file_test)
 
-    k_train, k_test = process_data_k(train_data)
+    # k_train, k_test = process_data_k(train_data)
 
-    # setup multiprocessing
-    num_threads = mp.cpu_count() - 1
-    p = mp.Pool(processes=num_threads)
+    # # setup multiprocessing
+    # num_threads = mp.cpu_count()
+    # p = mp.Pool(processes=num_threads)
 
-    # zipping dataset
-    zipped_num_neurons = []
-    zipped_k_train, zipped_k_test = [], []
-    for i in range(len(num_neurons)):
-        for j in range(k_value):
-            zipped_num_neurons.append(num_neurons[i])
-            zipped_k_train.append(k_train[j])
-            zipped_k_test.append(k_test[j])
+    # # zipping dataset
+    # zipped_neurons = []
+    # zipped_k_train, zipped_k_test = [], []
+    # for i in range(len(num_neurons)):
+    #     for j in range(k_value):
+    #         zipped_neurons.append(num_neurons[i])
+    #         zipped_k_train.append(k_train[j])
+    #         zipped_k_test.append(k_test[j])
 
-    # execute k-fold
-    dataset = p.starmap(
-        nn_model, zip(zipped_k_train, zipped_k_test, zipped_num_neurons)
-    )
+    # # execute k-fold
+    # dataset = p.starmap(nn_model, zip(zipped_k_train, zipped_k_test, zipped_neurons))
 
-    # export data meaningfully
-    export_data_batch(dataset, zipped_num_neurons)
+    # # export data meaningfully
+    # export_datasets(dataset, zipped_neurons)
 
-    file_1 = "../Out/3_n5.csv"
-    file_2 = "../Out/3_n10.csv"
-    file_3 = "../Out/3_n15.csv"
-    file_4 = "../Out/3_n20.csv"
-    file_5 = "../Out/3_n25.csv"
-    extract_useful_data(file_1, file_2, file_3, file_4, file_5)
+    # file_1 = "../Out/csv/3_neurons_5.csv"
+    # file_2 = "../Out/csv/3_neurons_10.csv"
+    # file_3 = "../Out/csv/3_neurons_15.csv"
+    # file_4 = "../Out/csv/3_neurons_20.csv"
+    # file_5 = "../Out/csv/3_neurons_25.csv"
+    # extract_data(file_1, file_2, file_3, file_4, file_5)
 
     # optimal neuron (size = 25)
     optimal_neuron = 25
     optimal_dataset = nn_model(train_data, test_data, optimal_neuron)
 
-    export_data(optimal_dataset)
+    export_optimal(optimal_dataset)
 
 
 if __name__ == "__main__":
