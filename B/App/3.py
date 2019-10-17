@@ -248,8 +248,8 @@ def main():
 
     export_data(dataset, FEATURE_INPUT[0])
 
-    process data
-    remove column 6: Research
+    # process data
+    # remove column 6: Research
     dropped_one_train = process_drop_feature(train_data, 6)
     dropped_one_test = process_drop_feature(test_data, 6)
 
