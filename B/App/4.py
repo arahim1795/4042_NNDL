@@ -529,11 +529,11 @@ def nn_model_5d(train_data, test_data):
 
 def plot_all(dataset_zero,dataset_one,dataset_one_drop,dataset_two,dataset_two_drop):
     test_accuracies = []
-    test_accuracies.append(dataset_zero)
-    test_accuracies.append(dataset_one)
-    test_accuracies.append(dataset_one_drop)
-    test_accuracies.append(dataset_two)
-    test_accuracies.append(dataset_two_drop)
+    test_accuracies.append(dataset_zero[1])
+    test_accuracies.append(dataset_one[1])
+    test_accuracies.append(dataset_one_drop[1])
+    test_accuracies.append(dataset_two[1])
+    test_accuracies.append(dataset_two_drop[1])
 
     fig1 = plt.figure(figsize=(16, 8))
     plt.plot(range(epochs), test_accuracies[0], label = "3 Layer", color = "#FF0000")
@@ -545,8 +545,27 @@ def plot_all(dataset_zero,dataset_one,dataset_one_drop,dataset_two,dataset_two_d
     plt.ylabel("Test Loss")
     plt.legend()
     plt.ylim(0.002,0.02)
-    fig1.savefig("../Out/4.png")
+    fig1.savefig("../Out/4_test.png")
 
+    train_accuracies = []
+    train_accuracies.append()
+    train_accuracies.append(dataset_zero[0])
+    train_accuracies.append(dataset_one[0])
+    train_accuracies.append(dataset_one_drop[0])
+    train_accuracies.append(dataset_two[0])
+    train_accuracies.append(dataset_two_drop[0])
+
+    fig2 = plt.figure(figsize=(16, 8))
+    plt.plot(range(epochs), train_accuracies[0], label = "3 Layer", color = "#FF0000")
+    plt.plot(range(epochs), train_accuracies[1], label = "4 Layer", color = "#0000FF")
+    plt.plot(range(epochs), train_accuracies[2], label = "4 Layer Dropout", color = "#008000")
+    plt.plot(range(epochs), train_accuracies[3], label = "5 Layer", color = "#FFA500")
+    plt.plot(range(epochs), train_accuracies[4], label = "5 Layer Dropout", color = "#FFC0CB")
+    plt.xlabel(str(epochs) + " iterations")
+    plt.ylabel("Train Loss")
+    plt.legend()
+    plt.ylim(0.002,0.02)
+    fig1.savefig("../Out/4_train.png")
 
 def main():
     # setup multiprocessing
@@ -568,8 +587,8 @@ def main():
 
     # drop 2nd feature
     dropped_two_train, dropped_two_test = [], []
-    dropped_two_train.append(process_drop_feature(dropped_one_train[0], 1))
-    dropped_two_test.append(process_drop_feature(dropped_one_test[0], 1))
+    dropped_two_train.append(process_drop_feature(dropped_one_train[0], 0))
+    dropped_two_test.append(process_drop_feature(dropped_one_test[0], 0))
     # zipping dataset
 
     dataset_zero = p.starmap(
@@ -592,7 +611,7 @@ def main():
         nn_model_5d, zip(dropped_two_train, dropped_two_test)
     )
 
-    plot_all(dataset_zero[0][1],dataset_one[0][1],dataset_one_drop[0][1],dataset_two[0][1],dataset_two_drop[0][1])
+    plot_all(dataset_zero[0],dataset_one[0],dataset_one_drop[0],dataset_two[0],dataset_two_drop[0])
 
 
 

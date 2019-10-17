@@ -230,26 +230,26 @@ def main():
     train_data = process_data(file_train)
     test_data = process_data(file_test)
 
-    # # drop one feature
-    # dropped_train_dataset, dropped_test_dataset = [], []
-    # for i in range(FEATURE_INPUT[0]):
-    #     dropped_train_dataset.append(process_drop_feature(train_data, i))
-    #     dropped_test_dataset.append(process_drop_feature(test_data, i))
+    # drop one feature
+    dropped_train_dataset, dropped_test_dataset = [], []
+    for i in range(FEATURE_INPUT[0]):
+        dropped_train_dataset.append(process_drop_feature(train_data, i))
+        dropped_test_dataset.append(process_drop_feature(test_data, i))
 
-    # # zipping dataset
-    # zipped_feature = []
-    # for i in range(FEATURE_INPUT[0]):
-    #     zipped_feature.append(FEATURE_INPUT[0] - 1)
+    # zipping dataset
+    zipped_feature = []
+    for i in range(FEATURE_INPUT[0]):
+        zipped_feature.append(FEATURE_INPUT[0] - 1)
 
-    # # execute RFE on 7 features
-    # dataset = p.starmap(
-    #     nn_model, zip(dropped_train_dataset, dropped_test_dataset, zipped_feature)
-    # )
+    # execute RFE on 7 features
+    dataset = p.starmap(
+        nn_model, zip(dropped_train_dataset, dropped_test_dataset, zipped_feature)
+    )
 
-    # export_data(dataset, FEATURE_INPUT[0])
+    export_data(dataset, FEATURE_INPUT[0])
 
-    # process data
-    # remove column 6: Research
+    process data
+    remove column 6: Research
     dropped_one_train = process_drop_feature(train_data, 6)
     dropped_one_test = process_drop_feature(test_data, 6)
 
