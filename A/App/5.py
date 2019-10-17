@@ -239,11 +239,16 @@ def extract_data(files):
     train_data_1 = np.delete(data_1, [0, 2, 3], axis=1)
     test_data_1 = np.delete(data_1, [0, 1, 3], axis=1)
 
-    data_1_max = np.genfromtxt("../Out/csv/1_max.csv", delimiter=",")[1:]
+    max_test_idx_1 = int(data_1.argmax(axis=0)[2])
 
-    # find larger convergence/max index
-    if max_test_idx < int(data_1_max[0][0]):
-        max_idx = data_1_max[0][0]
+    with open("../Out/csv/4_optimal_max.csv", "w") as f:
+        f.write("epoch,train accuracy,test_accuracy\n")
+        entry = data_1[max_test_idx_1]
+        f.write("%s,%s,%s\n" % (entry[0], entry[1], entry[2]))
+
+    # find index of higher test accuracy convergence
+    if data[max_test_idx][2] <= data_1[max_test_idx_1][2]:
+        max_idx = max_test_idx_1
     else:
         max_idx = max_test_idx
 
@@ -291,18 +296,18 @@ def extract_data(files):
 
 
 def main():
-    # process data
-    file_train = "../Data/train_data.csv"
-    file_test = "../Data/test_data.csv"
+    # # process data
+    # file_train = "../Data/train_data.csv"
+    # file_test = "../Data/test_data.csv"
 
-    train_data = process_data(file_train)
-    test_data = process_data(file_test)
+    # train_data = process_data(file_train)
+    # test_data = process_data(file_test)
 
-    # execute model
-    dataset = nn_model(train_data, test_data)
+    # # execute model
+    # dataset = nn_model(train_data, test_data)
 
-    files = ["../Out/csv/5.csv", "../Out/csv/1.csv"]
-    export_data(dataset, files[0])
+    files = ["../Out/csv/5.csv", "../Out/csv/4_optimal.csv"]
+    # export_data(dataset, files[0])
     extract_data(files)
 
 
