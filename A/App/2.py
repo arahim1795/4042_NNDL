@@ -10,14 +10,14 @@ import time
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 # hyper-parameters
-np.random.seed(291)
+np.random.seed(10)
 
 FEATURE_INPUT = 21  # input: LB to Tendency
 NUM_CLASSES = 3  # NSP = 1, 2, 3
 
 batches = [4, 8, 16, 32, 64]
 decay = math.pow(10, -6)
-epochs = 20000
+epochs = 19700  # from Q1
 k_value = 5
 learning_rate = 0.01
 num_neurons = 10
@@ -172,65 +172,43 @@ def nn_model(train_data, test_data, batch_size):
                 accuracy.eval(feed_dict={x: test_data[0], y_: test_data[1]})
             )
 
-            if (i % 1000) == 0:
-                print("epoch: ", i, " tr-acc: ", train_acc[i], "te-acc: ", test_acc[i])
-
             # randomise dataset
             train_data = randomise_order(train_data)
             per_epoch_time.append(time.time() - start_time)
 
-    data = []
-    data.append(train_acc)
-    data.append(test_acc)
-    data.append(per_epoch_time)
+    dataset = []
+    dataset.append(train_acc)
+    dataset.append(test_acc)
+    dataset.append(per_epoch_time)
 
-    return data
-
-
-def export_data(data):
-    # export accuracies
-    with open("../Out/2_optimal.csv", "w") as f:
-        f.write("iter,tr-acc,te-acc,time\n")
-        for j in range(0, epochs):
-            f.write("%s,%s,%s,%s\n" % (str(j), data[0][j], data[1][j], data[2][j]))
-
-    # plotting
-    plt.figure(figsize=(16, 8))
-    fig = plt.figure(1)
-    plt.plot(range(epochs), data[0], label="Train Accuracy", color="#ff0000")
-    plt.plot(range(epochs), data[1], label="Test Accuracy", color="#00ffff")
-    plt.xlabel(str(epochs) + " iterations")
-    plt.ylabel("Train/Test accuracy")
-    plt.legend()
-    fig.savefig("../Out/2_optimal_fig.png")
-    plt.close()
+    return dataset
 
 
-def export_data_batch(data, zipped_batch_size):
-    for i in range(0, len(data), 5):
+def export_datasets(dataset, zipped_batch_size):
+    for i in range(0, len(dataset), 5):
         #  mean cross-validation
         mean_train = (
-            np.array(data[i][0])
-            + np.array(data[i + 1][0])
-            + np.array(data[i + 2][0])
-            + np.array(data[i + 3][0])
-            + np.array(data[i + 4][0])
+            np.array(dataset[i][0])
+            + np.array(dataset[i + 1][0])
+            + np.array(dataset[i + 2][0])
+            + np.array(dataset[i + 3][0])
+            + np.array(dataset[i + 4][0])
         )
 
         mean_test = (
-            np.array(data[i][1])
-            + np.array(data[i + 1][1])
-            + np.array(data[i + 2][1])
-            + np.array(data[i + 3][1])
-            + np.array(data[i + 4][1])
+            np.array(dataset[i][1])
+            + np.array(dataset[i + 1][1])
+            + np.array(dataset[i + 2][1])
+            + np.array(dataset[i + 3][1])
+            + np.array(dataset[i + 4][1])
         )
 
         mean_time = (
-            np.array(data[i][2])
-            + np.array(data[i + 1][2])
-            + np.array(data[i + 2][2])
-            + np.array(data[i + 3][2])
-            + np.array(data[i + 4][2])
+            np.array(dataset[i][2])
+            + np.array(dataset[i + 1][2])
+            + np.array(dataset[i + 2][2])
+            + np.array(dataset[i + 3][2])
+            + np.array(dataset[i + 4][2])
         )
 
         mean_train = np.divide(mean_train, 5.0)
@@ -238,83 +216,120 @@ def export_data_batch(data, zipped_batch_size):
         mean_time = np.divide(mean_time, 5.0)
 
         # export data
-        with open("../Out/2_b" + str(zipped_batch_size[i]) + ".csv", "w") as f:
-            f.write("iter,tr-acc,te-acc,time\n")
+        with open("../Out/csv/2_batch_" + str(zipped_batch_size[i]) + ".csv", "w") as f:
+            f.write("epoch,train accuracy,test accuracy,time per epoch\n")
             for j in range(0, epochs):
                 f.write(
                     "%s,%s,%s,%s\n"
                     % (str(j), mean_train[j], mean_test[j], mean_time[j])
                 )
 
-        # plotting
-        fig = plt.figure(figsize=(16, 8))
-        plt.plot(range(epochs), mean_train, label="mean_train", color="#ff0000")
-        plt.plot(range(epochs), mean_test, label="mean_test", color="#00ffff")
 
-        plt.xlabel(str(epochs) + " iterations")
-        plt.ylabel("Train/Test accuracy")
-        plt.legend()
-        fig.savefig("../Out/2_b" + str(zipped_batch_size[i]) + ".png")
-        plt.close()
+def extract_data(file_1, file_2, file_3, file_4, file_5):
+    # parameters
+    colors = ["#FF0000", "#0000FF", "#008000", "#FFA500", "#323232"]
 
+    # find per batch max mean test accuracy (i.e. test error convergence)
+    datasets = []
+    datasets.append(np.genfromtxt(file_1, delimiter=",")[1:])
+    datasets.append(np.genfromtxt(file_2, delimiter=",")[1:])
+    datasets.append(np.genfromtxt(file_3, delimiter=",")[1:])
+    datasets.append(np.genfromtxt(file_4, delimiter=",")[1:])
+    datasets.append(np.genfromtxt(file_5, delimiter=",")[1:])
 
-def extract_useful_data(file_1, file_2, file_3, file_4, file_5):
-    # import raw data
-    raw_data_1 = np.genfromtxt(file_1, delimiter=",")[1:]
-    raw_data_2 = np.genfromtxt(file_2, delimiter=",")[1:]
-    raw_data_3 = np.genfromtxt(file_3, delimiter=",")[1:]
-    raw_data_4 = np.genfromtxt(file_4, delimiter=",")[1:]
-    raw_data_5 = np.genfromtxt(file_5, delimiter=",")[1:]
-    # print(raw_data_1[0])
+    # get max test index and value
+    max_mean_test_idxs = []
+    for i in range(len(datasets)):
+        max_mean_test_idxs.append(datasets[i].argmax(axis=0)[2])
 
-    # get test accs
-    test_acc = []
-    test_acc.append(np.delete(raw_data_1, [0, 1, 3], axis=1).max())
-    test_acc.append(np.delete(raw_data_2, [0, 1, 3], axis=1).max())
-    test_acc.append(np.delete(raw_data_3, [0, 1, 3], axis=1).max())
-    test_acc.append(np.delete(raw_data_4, [0, 1, 3], axis=1).max())
-    test_acc.append(np.delete(raw_data_5, [0, 1, 3], axis=1).max())
-    test_acc = np.array(test_acc)
+    max_mean_tests, corresp_train = [], []
+    with open("../Out/csv/2_max.csv", "w") as f:
+        f.write("batch,epoch,train accuracy,test_accuracy\n")
+        for i in range(len(max_mean_test_idxs)):
+            entry = datasets[i][max_mean_test_idxs[i]]
+            f.write("%s,%s,%s,%s\n" % (batches[i], entry[0], entry[1], entry[2]))
+            max_mean_tests.append(entry[2])
+            corresp_train.append(entry[1])
 
-    # get average time
-    time_1 = np.delete(raw_data_1, [0, 1, 2], axis=1)
-    time_2 = np.delete(raw_data_2, [0, 1, 2], axis=1)
-    time_3 = np.delete(raw_data_3, [0, 1, 2], axis=1)
-    time_4 = np.delete(raw_data_4, [0, 1, 2], axis=1)
-    time_5 = np.delete(raw_data_5, [0, 1, 2], axis=1)
-
-    timing = []
-    timing.append(np.average(time_1))
-    timing.append(np.average(time_2))
-    timing.append(np.average(time_3))
-    timing.append(np.average(time_4))
-    timing.append(np.average(time_5))
-    timing = np.array(timing)
-
-    filename = "../Out/2_max_mean_test.csv"
-    with open(filename, "w") as f:
-        f.write("batch,mean test\n")
-        for i in range(len(test_acc)):
-            f.write("%s,%s\n" % (str(batches[i]), test_acc[i]))
-
-    filename = "../Out/2_avg_time.csv"
-    with open(filename, "w") as f:
-        f.write("batch,avg time\n")
-        for i in range(len(timing)):
-            f.write("%s,%s\n" % (str(batches[i]), timing[i]))
-
-    fig = plt.figure(figsize=(16, 8))
-    plt.plot(batches, test_acc, label="max_acc", color="#ff0000")
-    plt.xticks(batches)
-    plt.legend()
-    fig.savefig("../Out/2_max_mean_test.png")
+    fig, ax = plt.subplots(figsize=(16, 8))
+    ax.set_ylabel("Accuracy")
+    ax.set_xlabel("Batch Size")
+    ax.set_xscale("log")
+    ax.set_xticks(batches)
+    ax.set_xticklabels(batches)
+    ax.plot(
+        batches, corresp_train, label="Correponding Train Accuracy", color="#0000FF"
+    )
+    ax.plot(batches, max_mean_tests, label="Max Mean Test Accuracy", color="#FF0000")
+    ax.legend()
+    fig.savefig("../Out/graph/2_max.png")
     plt.close()
 
-    fig = plt.figure(figsize=(16, 8))
-    plt.plot(batches, timing, label="avg_time", color="#ff0000")
-    plt.xticks(batches)
-    plt.legend()
-    fig.savefig("../Out/2_avg_time.png")
+    # get avg time elapsed per epoch against batch
+    avg_time_datasets = []
+    for i in range(len(datasets)):
+        temp_time = np.delete(datasets[i], [0, 1, 2], axis=1)
+        avg_time_datasets.append(np.average(temp_time))
+
+    with open("../Out/csv/2_avg_time.csv", "w") as f:
+        f.write("batch,average time per epoch\n")
+        for i in range(len(avg_time_datasets)):
+            f.write("%s,%s\n" % (batches[i], avg_time_datasets[i]))
+
+    fig, ax = plt.subplots(figsize=(16, 8))
+    ax.set_ylabel("Time (in seconds)")
+    ax.set_xlabel("Batch Size")
+    ax.set_xscale("log")
+    ax.set_xticks(batches)
+    ax.set_xticklabels(batches)
+    ax.plot(batches, avg_time_datasets, label="Average Time Per Epoch", color="#0000FF")
+    ax.legend()
+    fig.savefig("../Out/graph/2_avg.png")
+    plt.close()
+
+    train_dataset, test_dataset = [], []
+    for i in range(len(datasets)):
+        train_dataset.append(np.delete(datasets[i], [0, 2, 3], axis=1))
+        test_dataset.append(np.delete(datasets[i], [0, 1, 3], axis=1))
+
+    # plot all train together
+    fig, ax = plt.subplots(figsize=(16, 8))
+    ax.set_ylabel("Accuracy")
+    ax.set_xlabel("Epoch")
+    for i in range(len(datasets)):
+        name = "Batch Size " + str(batches[i])
+        ax.plot(range(epochs), train_dataset[i], label=name, color=colors[i])
+    ax.legend()
+    fig.savefig("../Out/graph/2_train.png")
+    plt.close()
+
+    # plot all test together
+    fig, ax = plt.subplots(figsize=(16, 8))
+    ax.set_ylabel("Accuracy")
+    ax.set_xlabel("Epoch")
+    for i in range(len(datasets)):
+        name = "Batch Size " + str(batches[i])
+        ax.plot(range(epochs), test_dataset[i], label=name, color=colors[i])
+    ax.legend()
+    fig.savefig("../Out/graph/2_test.png")
+    plt.close()
+
+
+def export_optimal(dataset):
+    with open("../Out/csv/2_optimal.csv", "w") as f:
+        f.write("epoch,train accuracy,test accuracy,time per epoch\n")
+        for i in range(0, epochs):
+            f.write(
+                "%s,%s,%s,%s\n" % (str(i), dataset[0][i], dataset[1][i], dataset[2][i])
+            )
+
+    fig, ax = plt.subplots(figsize=(16, 8))
+    ax.set_ylabel("Accuracy")
+    ax.set_xlabel("Epoch")
+    ax.plot(range(epochs), dataset[0], label="Train", color="#0000FF")
+    ax.plot(range(epochs), dataset[1], label="Test", color="#FF0000")
+    ax.legend()
+    fig.savefig("../Out/graph/2_optimal.png")
     plt.close()
 
 
@@ -329,7 +344,7 @@ def main():
     k_train, k_test = process_data_k(train_data)
 
     # setup multiprocessing
-    num_threads = mp.cpu_count() - 1
+    num_threads = mp.cpu_count()
     p = mp.Pool(processes=num_threads)
 
     # zipping dataset
@@ -345,20 +360,20 @@ def main():
     dataset = p.starmap(nn_model, zip(zipped_k_train, zipped_k_test, zipped_batch_size))
 
     # export data meaningfully
-    export_data_batch(dataset, zipped_batch_size)
+    export_datasets(dataset, zipped_batch_size)
 
-    file_1 = "../Out/2_b4.csv"
-    file_2 = "../Out/2_b8.csv"
-    file_3 = "../Out/2_b16.csv"
-    file_4 = "../Out/2_b32.csv"
-    file_5 = "../Out/2_b64.csv"
-    extract_useful_data(file_1, file_2, file_3, file_4, file_5)
+    file_1 = "../Out/csv/2_batch_4.csv"
+    file_2 = "../Out/csv/2_batch_8.csv"
+    file_3 = "../Out/csv/2_batch_16.csv"
+    file_4 = "../Out/csv/2_batch_32.csv"
+    file_5 = "../Out/csv/2_batch_64.csv"
+    extract_data(file_1, file_2, file_3, file_4, file_5)
 
-    # pptimal batch (size = 4)
-    optimal_size = 4
-    optimal_acc = nn_model(train_data, test_data, optimal_size)
+    # optimal batch (size = 8)
+    optimal_size = 8
+    optimal_data = nn_model(train_data, test_data, optimal_size)
 
-    export_data(optimal_acc)
+    export_optimal(optimal_data)
 
 
 if __name__ == "__main__":
