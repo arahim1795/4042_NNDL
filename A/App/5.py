@@ -296,18 +296,18 @@ def extract_data(files):
 
 
 def main():
-    # # process data
-    # file_train = "../Data/train_data.csv"
-    # file_test = "../Data/test_data.csv"
+    # process data
+    file_train = "../Data/train_data.csv"
+    file_test = "../Data/test_data.csv"
 
-    # train_data = process_data(file_train)
-    # test_data = process_data(file_test)
+    train_data = process_data(file_train)
+    test_data = process_data(file_test)
 
-    # # execute model
-    # dataset = nn_model(train_data, test_data)
+    # execute model
+    dataset = nn_model(train_data, test_data)
 
     files = ["../Out/csv/5.csv", "../Out/csv/4_optimal.csv"]
-    # export_data(dataset, files[0])
+    export_data(dataset, files[0])
     extract_data(files)
 
 

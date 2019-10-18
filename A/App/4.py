@@ -325,34 +325,34 @@ def main():
     train_data = process_data(file_train)
     test_data = process_data(file_test)
 
-    # k_train, k_test = process_data_k(train_data)
+    k_train, k_test = process_data_k(train_data)
 
-    # # setup multiprocessing
-    # num_threads = mp.cpu_count()
-    # p = mp.Pool(processes=num_threads)
+    # setup multiprocessing
+    num_threads = mp.cpu_count()
+    p = mp.Pool(processes=num_threads)
 
-    # # zipping dataset
-    # zipped_decay, zipped_decay_exp = [], []
-    # zipped_k_train, zipped_k_test = [], []
-    # for i in range(len(decay)):
-    #     for j in range(k_value):
-    #         zipped_decay.append(decay[i])
-    #         zipped_decay_exp.append(decay_exp[i])
-    #         zipped_k_train.append(k_train[j])
-    #         zipped_k_test.append(k_test[j])
+    # zipping dataset
+    zipped_decay, zipped_decay_exp = [], []
+    zipped_k_train, zipped_k_test = [], []
+    for i in range(len(decay)):
+        for j in range(k_value):
+            zipped_decay.append(decay[i])
+            zipped_decay_exp.append(decay_exp[i])
+            zipped_k_train.append(k_train[j])
+            zipped_k_test.append(k_test[j])
 
-    # # execute k-fold
-    # dataset = p.starmap(nn_model, zip(zipped_k_train, zipped_k_test, zipped_decay))
+    # execute k-fold
+    dataset = p.starmap(nn_model, zip(zipped_k_train, zipped_k_test, zipped_decay))
 
     # export data meaningfully
-    # export_datasets(dataset, zipped_decay_exp)
+    export_datasets(dataset, zipped_decay_exp)
 
-    # file_1 = "../Out/csv/4_decay_0.csv"
-    # file_2 = "../Out/csv/4_decay_3.csv"
-    # file_3 = "../Out/csv/4_decay_6.csv"
-    # file_4 = "../Out/csv/4_decay_9.csv"
-    # file_5 = "../Out/csv/4_decay_12.csv"
-    # extract_data(file_1, file_2, file_3, file_4, file_5)
+    file_1 = "../Out/csv/4_decay_0.csv"
+    file_2 = "../Out/csv/4_decay_3.csv"
+    file_3 = "../Out/csv/4_decay_6.csv"
+    file_4 = "../Out/csv/4_decay_9.csv"
+    file_5 = "../Out/csv/4_decay_12.csv"
+    extract_data(file_1, file_2, file_3, file_4, file_5)
 
     # optimal decay (decay = 10^-6)
     optimal_decay = math.pow(10, -6)
