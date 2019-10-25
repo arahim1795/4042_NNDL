@@ -1,6 +1,10 @@
 Pipfile
 Pipfile.lock
-A/Data/*
-!A/Data/prepare_data.py
-B/Data/*
-!B/Data/prepare_data.py
+1/A/Data/*
+!1/A/Data/prepare_data.py
+1/B/Data/*
+!1/B/Data/prepare_data.py
+2/A/Data/*
+!2/A/Data/prepare_data.py
+2/B/Data/*
+!2/B/Data/prepare_data.py
