@@ -5,13 +5,13 @@ import csv
 
 MAX_DOCUMENT_LENGTH = 100
 N_FILTERS = 10
-FILTER_SHAPE1 = [20, 256]
+FILTER_SHAPE = [[20, 256],[20,1]] // original window size
 POOLING_WINDOW = 4
 POOLING_STRIDE = 2
 MAX_LABEL = 15
 
 no_epochs = 100
-lr = 0.01
+learning_rate= 0.01
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 seed = 10
@@ -22,22 +22,24 @@ def char_cnn_model(x):
   input_layer = tf.reshape(
       tf.one_hot(x, 256), [-1, MAX_DOCUMENT_LENGTH, 256, 1])
 
-  with tf.variable_scope('CNN_Layer1'):
-    conv1 = tf.layers.conv2d(
-        input_layer,
-        filters=N_FILTERS,
-        kernel_size=FILTER_SHAPE1,
-        padding='VALID',
-        activation=tf.nn.relu)
-    pool1 = tf.layers.max_pooling2d(
-        conv1,
-        pool_size=POOLING_WINDOW,
-        strides=POOLING_STRIDE,
-        padding='SAME')
+  # CNN layer 1
+  conv1 = tf.layers.conv2d(
+      input_layer,
+      filters=N_FILTERS,
+      kernel_size=FILTER_SHAPE[0],
+      padding='VALID',
+      activation=tf.nn.relu)
+  # Pooling layer 1
+  pool1 = tf.layers.max_pooling2d(
+      conv1,
+      pool_size=POOLING_WINDOW,
+      strides=POOLING_STRIDE,
+      padding='SAME')
 
-    pool1 = tf.squeeze(tf.reduce_max(pool1, 1), squeeze_dims=[1])
+  pool1 = tf.squeeze(tf.reduce_max(pool1, 1), squeeze_dims=[1])
 
-  logits = tf.layers.dense(pool1, MAX_LABEL, activation=None)
+  layer_1_output = tf.layers.dense(pool1, MAX_LABEL, activation=None)
+
 
   return input_layer, logits
 
