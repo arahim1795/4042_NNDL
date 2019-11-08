@@ -11,18 +11,22 @@ POOLING_WINDOW = 4
 POOLING_STRIDE = 2
 MAX_LABEL = 15
 batch_size = 128
-epochs = 10
+epochs = 100
 learning_rate= 0.01
+EMBEDDED_SIZE = 20
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 seed = 10
 tf.set_random_seed(seed)
 
 def char_cnn_model(x):
-  
-  input_layer = tf.reshape(
-      tf.one_hot(x, 20), [-1, MAX_DOCUMENT_LENGTH, 20, 1])  
-
+  # Embedding Layer
+  # embedding_layer = layers.Embedding(x,20,input_length=20)
+  word_vectors = tf.contrib.layers.embed_sequence(
+      x, vocab_size=no_words, embed_dim=EMBEDDED_SIZE)
+  print(word_vectors)
+  word_list = tf.unstack(word_vectors, axis=1)
+  input_layer = tf.reshape(word_vectors, [-1, MAX_DOCUMENT_LENGTH, EMBEDDED_SIZE,1])
   # CNN layer 1
   conv_1 = tf.layers.conv2d(
       input_layer,
@@ -62,6 +66,17 @@ def char_cnn_model(x):
 
   return input_layer, logits
 
+def export_data(dataset):
+    # export accuracies
+
+    fig1 = plt.figure(figsize=(16, 8))
+    plt.plot(range(epochs), dataset[0], label="Train Loss")
+    plt.plot(range(epochs), dataset[1], label="Test Loss")
+    plt.xlabel(str(epochs) + " iterations")
+    plt.ylabel("Train/Test Loss")
+    plt.ylim(0, 0.03)
+    plt.legend()
+    fig1.savefig("../Out/1_loss.png")
 
 def data_read_words():
   
@@ -103,11 +118,8 @@ def data_read_words():
 
   
 def main():
-  
+  global no_words
   trainX, trainY, testX, testY, no_words= data_read_words()
-
-  print(len(trainX))
-  print(len(testX))
 
   # Create the model
   x = tf.placeholder(tf.int64, [None, MAX_DOCUMENT_LENGTH])
@@ -126,7 +138,7 @@ def main():
   sess.run(tf.global_variables_initializer())
 
   # training
-  train_accuracy,entropy_cost = [],[]
+  test_accuracy,entropy_cost = [],[]
   with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
 
@@ -138,20 +150,30 @@ def main():
             # Mini-batch training
             for start, end in zip(range(0, len(trainX), batch_size), range(batch_size, len(trainX), batch_size)):
                 sess.run(train_op, {x: trainX[start:end], y_: trainY[start:end]})
-                
-            acc_,loss_ = sess.run([accuracy, entropy], {x: trainX, y_: trainY})
-            train_accuracy.append(acc_)
+            # evaluation    
+            acc_,loss_ = sess.run([accuracy, entropy], {x: testX, y_: testY})
+            test_accuracy.append(acc_)
             entropy_cost.append(loss_)
             print('epoch', e, 'entropy', loss_,'accuracy', acc_)
 
-        plt.figure()
-        plt.plot(range(epochs),train_accuracy,label="Training Accuracy")
+        fig1 = plt.figure(figsize=(16,8))
         plt.plot(range(epochs),entropy_cost,label="Entropy Cost")
         plt.xlabel("Epochs")
+        plt.ylabel("Entropy Cost")
         plt.legend()
-        plt.savefig("../Out/B2.png")
+        fig1.savefig("../Out/B2_Cost.png")
 
-  sess.close()
+        fig2 = plt.figure(figsize=(16,8))
+        plt.plot(range(epochs),test_accuracy,label="Training Accuracy")
+        plt.xlabel("Epochs")
+        plt.ylabel("Entropy Cost")
+        plt.legend()
+        fig2.savefig("../Out/B2_Accuracy.png")
+
+  with open("../Out/2.csv", "w") as f:
+        f.write("epoch,test accuracy,entropy_cost\n")
+        for e in range(epochs):
+          f.write("%s,%s,%s\n" % (str(e), str(test_accuracy[e]), str(entropy_cost[e])))
 
 if __name__ == '__main__':
   main()

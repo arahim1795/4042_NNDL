@@ -11,7 +11,7 @@ POOLING_WINDOW = 4
 POOLING_STRIDE = 2
 MAX_LABEL = 15
 batch_size = 128
-epochs = 10
+epochs = 100
 learning_rate= 0.01
 
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -118,7 +118,7 @@ def main():
   sess.run(tf.global_variables_initializer())
 
   # training
-  train_accuracy,entropy_cost = [],[]
+  test_accuracy,entropy_cost = [],[]
   with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
 
@@ -131,19 +131,28 @@ def main():
             for start, end in zip(range(0, len(trainX), batch_size), range(batch_size, len(trainX), batch_size)):
                 sess.run(train_op, {x: trainX[start:end], y_: trainY[start:end]})
                 
-            acc_,loss_ = sess.run([accuracy, entropy], {x: trainX, y_: trainY})
-            train_accuracy.append(acc_)
+            acc_,loss_ = sess.run([accuracy, entropy], {x: testX, y_: testY})
+            test_accuracy.append(acc_)
             entropy_cost.append(loss_)
             print('epoch', e, 'entropy', loss_,'accuracy', acc_)
 
-        plt.figure()
-        plt.plot(range(epochs),train_accuracy,label="Training Accuracy")
+        fig1 = plt.figure(figsize=(16,8))
         plt.plot(range(epochs),entropy_cost,label="Entropy Cost")
         plt.xlabel("Epochs")
+        plt.ylabel("Entropy Cost")
         plt.legend()
-        plt.savefig("../Out/B1.png")
+        fig1.savefig("../Out/B1_Cost.png")
 
-  sess.close()
+        fig2 = plt.figure(figsize=(16,8))
+        plt.plot(range(epochs),test_accuracy,label="Training Accuracy")
+        plt.xlabel("Epochs")
+        plt.ylabel("Entropy Cost")
+        plt.legend()
+        fig2.savefig("../Out/B1_Accuracy.png")
+  with open("../Out/1.csv", "w") as f:
+    f.write("epoch,test accuracy,entropy_cost\n")
+    for e in range(epochs):
+      f.write("%s,%s,%s\n" % (str(e), str(test_accuracy[e]), str(entropy_cost[e])))
 
 if __name__ == '__main__':
   main()
