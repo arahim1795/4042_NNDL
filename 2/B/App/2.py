@@ -131,7 +131,7 @@ def main():
   entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=tf.one_hot(y_, MAX_LABEL), logits=logits))
   train_op = tf.train.AdamOptimizer(learning_rate).minimize(entropy)
 
-  correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), y_), tf.float32)
+  correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(tf.one_hot(y_,MAX_LABEL),1)), tf.float32)
   accuracy = tf.reduce_mean(correct_prediction)
 
   sess = tf.Session()

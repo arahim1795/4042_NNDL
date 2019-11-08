@@ -11,7 +11,7 @@ POOLING_WINDOW = 4
 POOLING_STRIDE = 2
 MAX_LABEL = 15
 batch_size = 128
-epochs = 100
+epochs = 10
 learning_rate= 0.01
 
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -22,7 +22,8 @@ def char_cnn_model(x):
   
   input_layer = tf.reshape(
       tf.one_hot(x, 256), [-1, MAX_DOCUMENT_LENGTH, 256, 1])  
-
+  print(FILTER_SHAPE[0])
+  print(FILTER_SHAPE[1])
   # CNN layer 1
   conv_1 = tf.layers.conv2d(
       input_layer,
@@ -55,8 +56,8 @@ def char_cnn_model(x):
   #pool2 = tf.squeeze(tf.reduce_max(pool2, 1), squeeze_dims=[1])
 
   # Softmax Layer
-  W_softmax = tf.Variable(tf.truncated_normal([dim_sum_2, 15], stddev=1.0/np.sqrt(dim_sum_2)), name='weights_softmax')
-  b_softmax = tf.Variable(tf.zeros([15]), name='biases_3')
+  W_softmax = tf.Variable(tf.truncated_normal([dim_sum_2, 15], stddev=(1.0/np.sqrt(dim_sum_2))), name='weights_softmax')
+  b_softmax = tf.Variable(tf.zeros([15]), name='biases_softmax')
   logits = tf.matmul(pool_2_flat, W_softmax) + b_softmax
 
 
@@ -111,30 +112,31 @@ def main():
   entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=tf.one_hot(y_, MAX_LABEL), logits=logits))
   train_op = tf.train.AdamOptimizer(learning_rate).minimize(entropy)
 
-  correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), y_), tf.float32)
+  correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(tf.one_hot(y_,MAX_LABEL),1)), tf.float32)
   accuracy = tf.reduce_mean(correct_prediction)
 
   sess = tf.Session()
   sess.run(tf.global_variables_initializer())
 
   # training
-  test_accuracy,entropy_cost = [],[]
+  train_accuracy,test_accuracy,entropy_cost = [],[],[]
   with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-
+        N = len(trainX)
+        idx = np.arange(N)
         for e in range(epochs):
-            N = len(trainX)
-            idx = np.arange(N)
             np.random.shuffle(idx)
             trainX, trainY = trainX[idx], trainY[idx] #shuffle
             # Mini-batch training
             for start, end in zip(range(0, len(trainX), batch_size), range(batch_size, len(trainX), batch_size)):
                 sess.run(train_op, {x: trainX[start:end], y_: trainY[start:end]})
                 
-            acc_,loss_ = sess.run([accuracy, entropy], {x: testX, y_: testY})
-            test_accuracy.append(acc_)
+            acc_,loss_ = sess.run([accuracy, entropy], {x: trainX, y_: trainY})
+            test_acc = accuracy.eval(feed_dict={x:testX,y_:testY})
+            train_accuracy.append(acc_)
+            test_accuracy.append(test_accuracy)
             entropy_cost.append(loss_)
-            print('epoch', e, 'entropy', loss_,'accuracy', acc_)
+            print('epoch', e, 'entropy', loss_,'accuracy', acc_,'test accuracy',test_acc)
 
         fig1 = plt.figure(figsize=(16,8))
         plt.plot(range(epochs),entropy_cost,label="Entropy Cost")
@@ -144,15 +146,16 @@ def main():
         fig1.savefig("../Out/B1_Cost.png")
 
         fig2 = plt.figure(figsize=(16,8))
-        plt.plot(range(epochs),test_accuracy,label="Training Accuracy")
+        plt.plot(range(epochs),test_accuracy,label="Test Accuracy")
+        plt.plot(range(epochs),accuracy,label="Training Accuracy")
         plt.xlabel("Epochs")
         plt.ylabel("Entropy Cost")
         plt.legend()
         fig2.savefig("../Out/B1_Accuracy.png")
-  with open("../Out/1.csv", "w") as f:
-    f.write("epoch,test accuracy,entropy_cost\n")
-    for e in range(epochs):
-      f.write("%s,%s,%s\n" % (str(e), str(test_accuracy[e]), str(entropy_cost[e])))
+        with open("../Out/1.csv", "w") as f:
+          f.write("epoch,test accuracy,entropy_cost\n")
+          for e in range(epochs):
+            f.write("%s,%s,%s\n" % (str(e), str(test_accuracy[e]), str(entropy_cost[e])))
 
 if __name__ == '__main__':
   main()
