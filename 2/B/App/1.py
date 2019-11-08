@@ -134,7 +134,7 @@ def main():
             acc_,loss_ = sess.run([accuracy, entropy], {x: trainX, y_: trainY})
             test_acc = accuracy.eval(feed_dict={x:testX,y_:testY})
             train_accuracy.append(acc_)
-            test_accuracy.append(test_accuracy)
+            test_accuracy.append(test_acc)
             entropy_cost.append(loss_)
             print('epoch', e, 'entropy', loss_,'accuracy', acc_,'test accuracy',test_acc)
 
@@ -144,18 +144,20 @@ def main():
         plt.ylabel("Entropy Cost")
         plt.legend()
         fig1.savefig("../Out/B1_Cost.png")
+        plt.close()
 
         fig2 = plt.figure(figsize=(16,8))
         plt.plot(range(epochs),test_accuracy,label="Test Accuracy")
-        plt.plot(range(epochs),accuracy,label="Training Accuracy")
+        plt.plot(range(epochs),train_accuracy,label="Training Accuracy")
         plt.xlabel("Epochs")
         plt.ylabel("Entropy Cost")
         plt.legend()
         fig2.savefig("../Out/B1_Accuracy.png")
-        with open("../Out/1.csv", "w") as f:
-          f.write("epoch,test accuracy,entropy_cost\n")
-          for e in range(epochs):
-            f.write("%s,%s,%s\n" % (str(e), str(test_accuracy[e]), str(entropy_cost[e])))
+        plt.close()
+  with open("../Out/1.csv", "w") as f:
+    f.write("epoch,test accuracy,entropy_cost\n")
+    for e in range(epochs):
+      f.write("%s,%s,%s\n" % (str(e), str(test_accuracy[e]), str(entropy_cost[e])))
 
 if __name__ == '__main__':
   main()
