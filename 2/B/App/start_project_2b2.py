@@ -66,6 +66,36 @@ def data_read_words():
 
   return x_train, y_train, x_test, y_test, no_words
 
+def read_data_chars():
+  
+  x_train, y_train, x_test, y_test = [], [], [], []
+
+  with open('train_medium.csv', encoding='utf-8') as filex:
+    reader = csv.reader(filex)
+    for row in reader:
+      x_train.append(row[1])
+      y_train.append(int(row[0]))
+
+  with open('test_medium.csv', encoding='utf-8') as filex:
+    reader = csv.reader(filex)
+    for row in reader:
+      x_test.append(row[1])
+      y_test.append(int(row[0]))
+  
+  x_train = pandas.Series(x_train)
+  y_train = pandas.Series(y_train)
+  x_test = pandas.Series(x_test)
+  y_test = pandas.Series(y_test)
+  
+  
+  char_processor = tf.contrib.learn.preprocessing.ByteProcessor(MAX_DOCUMENT_LENGTH)
+  x_train = np.array(list(char_processor.fit_transform(x_train)))
+  x_test = np.array(list(char_processor.transform(x_test)))
+  y_train = y_train.values
+  y_test = y_test.values
+  
+  return x_train, y_train, x_test, y_test
+  
 def main():
   global n_words
 

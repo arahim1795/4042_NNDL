@@ -11,7 +11,7 @@ POOLING_WINDOW = 4
 POOLING_STRIDE = 2
 MAX_LABEL = 15
 batch_size = 128
-epochs = 10
+epochs = 100
 learning_rate= 0.01
 
 tf.logging.set_verbosity(tf.logging.ERROR)

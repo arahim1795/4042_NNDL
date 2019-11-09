@@ -19,12 +19,11 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 seed = 10
 tf.set_random_seed(seed)
 
-def char_cnn_model(x):
+def word_cnn_model(x):
   # Embedding Layer
   # embedding_layer = layers.Embedding(x,20,input_length=20)
   word_vectors = tf.contrib.layers.embed_sequence(
       x, vocab_size=no_words, embed_dim=EMBEDDED_SIZE)
-  print(word_vectors)
   word_list = tf.unstack(word_vectors, axis=1)
   input_layer = tf.reshape(word_vectors, [-1, MAX_DOCUMENT_LENGTH, EMBEDDED_SIZE,1])
   # CNN layer 1
@@ -65,18 +64,6 @@ def char_cnn_model(x):
 
 
   return input_layer, logits
-
-def export_data(dataset):
-    # export accuracies
-
-    fig1 = plt.figure(figsize=(16, 8))
-    plt.plot(range(epochs), dataset[0], label="Train Loss")
-    plt.plot(range(epochs), dataset[1], label="Test Loss")
-    plt.xlabel(str(epochs) + " iterations")
-    plt.ylabel("Train/Test Loss")
-    plt.ylim(0, 0.03)
-    plt.legend()
-    fig1.savefig("../Out/1_loss.png")
 
 def data_read_words():
   
