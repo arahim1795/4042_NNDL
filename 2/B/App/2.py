@@ -59,14 +59,8 @@ def word_cnn_model(train_data,test_data,keep_probability):
         strides=POOLING_STRIDE,
         padding='SAME')
     drop_2 = tf.nn.dropout(pool_2, keep_probability)  # DROP-OUT here
-    dim_sum_2 = drop_2.get_shape()[1].value * drop_2.get_shape()[2].value * drop_2.get_shape()[3].value
-    drop_2_flat = tf.reshape(drop_2, [-1, dim_sum_2])
-    #pool2 = tf.squeeze(tf.reduce_max(pool2, 1), squeeze_dims=[1])
-
-    # Softmax Layer
-    W_softmax = tf.Variable(tf.truncated_normal([dim_sum_2, 15], stddev=1.0/np.sqrt(dim_sum_2)), name='weights_softmax')
-    b_softmax = tf.Variable(tf.zeros([15]), name='biases_3')
-    logits = tf.matmul(drop_2_flat, W_softmax) + b_softmax
+    drop_2 = tf.squeeze(tf.reduce_max(drop_2,1),squeeze_dims=[1])
+    logits = tf.layers.dense(drop_2,MAX_LABEL,activation=None)
     
     test_accuracy,entropy_cost = [],[]
     # Optimizer

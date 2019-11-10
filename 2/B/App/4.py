@@ -33,7 +33,7 @@ def word_rnn_model(train_data,test_data,keep_probability):
     _, encoding = tf.nn.static_rnn(cell, word_list, dtype=tf.float32)
     dropped = tf.nn.dropout(encoding, keep_probability)  # DROP-OUT here
     #output layer
-    logits = tf.layers.dense(encoding, MAX_LABEL, activation=None)
+    logits = tf.layers.dense(dropped, MAX_LABEL, activation=None)
     
     test_accuracy,entropy_cost = [],[]
     # Optimizer
