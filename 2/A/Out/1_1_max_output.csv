@@ -1,0 +1,2 @@
+epoch,train_acc,train_cost,test_acc
+1989,0.7348,0.8450689,0.5615
