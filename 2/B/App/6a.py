@@ -1,5 +1,5 @@
 import numpy as np
-import pandas
+import pandas as pd
 import tensorflow as tf
 import csv
 import matplotlib.pylab as plt
@@ -7,7 +7,7 @@ from tqdm import tqdm
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 #general
-epochs = 100
+epochs = 20
 learning_rate= 0.01
 EMBEDDED_SIZE = 20
 MAX_DOCUMENT_LENGTH = 100
@@ -24,76 +24,55 @@ seed = 10
 tf.set_random_seed(seed)
 
 def data_read_words():
-    x_train, y_train, x_test, y_test = [], [], [], []
 
-    with open('../Data/train_medium.csv', encoding='utf-8') as filex:
-        reader = csv.reader(filex)
-        for row in reader:
-            x_train.append(row[2])
-            y_train.append(int(row[0]))
+    train_X = pd.read_csv('../Data/train_medium.csv', encoding='utf-8', header=None)
+    train_X, train_Y = train_X[train_X.columns[2]], train_X[train_X.columns[0]]
 
-    with open("../Data/test_medium.csv", encoding='utf-8') as filex:
-        reader = csv.reader(filex)
-        for row in reader:
-            x_test.append(row[2])
-            y_test.append(int(row[0]))
+    test_X = pd.read_csv('../Data/test_medium.csv', encoding='utf-8', header=None)
+    test_X, test_Y = test_X[test_X.columns[2]], test_X[test_X.columns[0]]
+    test_X, test_Y = np.array(test_X), np.array(test_Y)
 
-    x_train = pandas.Series(x_train)
-    y_train = pandas.Series(y_train)
-    x_test = pandas.Series(x_test)
-    y_test = pandas.Series(y_test)
-    y_train = y_train.values
-    y_test = y_test.values
+    vocab_processor = tf.contrib.learn.preprocessing.VocabularyProcessor(MAX_DOCUMENT_LENGTH)
+    train_X = np.array(list(vocab_processor.fit_transform(train_X)))
+    test_X = np.array(list(vocab_processor.transform(test_X)))
 
-    vocab_processor = tf.contrib.learn.preprocessing.VocabularyProcessor(
-        MAX_DOCUMENT_LENGTH)
+    trainY = np.zeros((train_Y.shape[0], MAX_LABEL))
+    testY = np.zeros((test_Y.shape[0], MAX_LABEL))
+    trainY[np.arange(train_Y.shape[0]), train_Y - 1] = 1  # one hot matrix
+    testY[np.arange(test_Y.shape[0]), test_Y - 1] = 1  # one hot matrix
 
-    x_transform_train = vocab_processor.fit_transform(x_train)
-    x_transform_test = vocab_processor.transform(x_test)
+    no_words = no_words = len(vocab_processor.vocabulary_)
 
-    x_train = np.array(list(x_transform_train))
-    x_test = np.array(list(x_transform_test))
-
-    no_words = len(vocab_processor.vocabulary_)
     trainData, testData = [],[]
-    trainData.append(x_train)
-    trainData.append(y_train)
-    testData.append(x_test)
-    testData.append(y_test)
-    return trainData, testData, no_words
+    trainData.append(train_X)
+    trainData.append(trainY)
+    testData.append(test_X)
+    testData.append(testY)
+    return trainData,testData,no_words
 
 def data_read_chars():
-    x_train, y_train, x_test, y_test = [], [], [], []
 
-    with open('../Data/train_medium.csv', encoding='utf-8') as filex:
-        reader = csv.reader(filex)
-        for row in reader:
-            x_train.append(row[1])
-            y_train.append(int(row[0]))
+    train_X = pd.read_csv('../Data/train_medium.csv', encoding='utf-8', header=None)
+    train_X, train_Y = train_X[train_X.columns[2]], train_X[train_X.columns[0]]
 
-    with open('../Data/test_medium.csv', encoding='utf-8') as filex:
-        reader = csv.reader(filex)
-        for row in reader:
-            x_test.append(row[1])
-            y_test.append(int(row[0]))
-    
-    x_train = pandas.Series(x_train)
-    y_train = pandas.Series(y_train)
-    x_test = pandas.Series(x_test)
-    y_test = pandas.Series(y_test)
-    
+    test_X = pd.read_csv('../Data/test_medium.csv', encoding='utf-8', header=None)
+    test_X, test_Y = test_X[test_X.columns[2]], test_X[test_X.columns[0]]
+    test_X, test_Y = np.array(test_X), np.array(test_Y)
     
     char_processor = tf.contrib.learn.preprocessing.ByteProcessor(MAX_DOCUMENT_LENGTH)
-    x_train = np.array(list(char_processor.fit_transform(x_train)))
-    x_test = np.array(list(char_processor.transform(x_test)))
-    y_train = y_train.values
-    y_test = y_test.values
+    trainX = np.array(list(char_processor.fit_transform(train_X)))
+    testX = np.array(list(char_processor.transform(test_X)))
+    
+    trainY = np.zeros((train_Y.shape[0], MAX_LABEL))
+    testY = np.zeros((test_Y.shape[0], MAX_LABEL))
+    trainY[np.arange(train_Y.shape[0]), train_Y - 1] = 1  # one hot matrix
+    testY[np.arange(test_Y.shape[0]), test_Y - 1] = 1  # one hot matrix
 
     trainData, testData = [],[]
-    trainData.append(x_train)
-    trainData.append(y_train)
-    testData.append(x_test)
-    testData.append(y_test)
+    trainData.append(trainX)
+    trainData.append(trainY)
+    testData.append(testX)
+    testData.append(testY)
     
     return trainData,testData
 
@@ -116,10 +95,10 @@ def char_rnn_model_vanillaRNN(train_data,test_data,keep_probability):
 
     test_accuracy,entropy_cost = [],[]
     # Optimizer
-    entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=tf.one_hot(y_, MAX_LABEL), logits=logits))
+    entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_, logits=logits))
     train_op = tf.train.AdamOptimizer(learning_rate).minimize(entropy)
 
-    correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(tf.one_hot(y_,MAX_LABEL),1)), tf.float32)
+    correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1)),tf.float32)
     accuracy = tf.reduce_mean(correct_prediction)
 
 
@@ -165,10 +144,10 @@ def char_rnn_model_LSTM(train_data,test_data,keep_probability):
 
     test_accuracy,entropy_cost = [],[]
     # Optimizer
-    entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=tf.one_hot(y_, MAX_LABEL), logits=logits))
+    entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_, logits=logits))
     train_op = tf.train.AdamOptimizer(learning_rate).minimize(entropy)
 
-    correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(tf.one_hot(y_,MAX_LABEL),1)), tf.float32)
+    correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1)),tf.float32)
     accuracy = tf.reduce_mean(correct_prediction)
 
 
@@ -214,10 +193,10 @@ def word_rnn_model_vanillaRNN(train_data,test_data,keep_probability):
     
     test_accuracy,entropy_cost = [],[]
     # Optimizer
-    entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=tf.one_hot(y_, MAX_LABEL), logits=logits))
+    entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_, logits=logits))
     train_op = tf.train.AdamOptimizer(learning_rate).minimize(entropy)
 
-    correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(tf.one_hot(y_,MAX_LABEL),1)), tf.float32)
+    correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1)),tf.float32)
     accuracy = tf.reduce_mean(correct_prediction)
 
     # training
@@ -263,10 +242,10 @@ def word_rnn_model_LSTM(train_data,test_data,keep_probability):
     # Currently size 256 by 15
     test_accuracy,entropy_cost = [],[]
     # Optimizer
-    entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=tf.one_hot(y_, MAX_LABEL), logits=logits))
+    entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_, logits=logits))
     train_op = tf.train.AdamOptimizer(learning_rate).minimize(entropy)
 
-    correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(tf.one_hot(y_,MAX_LABEL),1)), tf.float32)
+    correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1)),tf.float32)
     accuracy = tf.reduce_mean(correct_prediction)
 
     # training
@@ -309,12 +288,11 @@ def char_rnn_model(train_data,test_data,keep_probability):
 
     test_accuracy,entropy_cost = [],[]
     # Optimizer
-    entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=tf.one_hot(y_, MAX_LABEL), logits=logits))
+    entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_, logits=logits))
     train_op = tf.train.AdamOptimizer(learning_rate).minimize(entropy)
 
-    correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(tf.one_hot(y_,MAX_LABEL),1)), tf.float32)
+    correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1)),tf.float32)
     accuracy = tf.reduce_mean(correct_prediction)
-
 
     # training
     with tf.Session() as sess:
@@ -358,10 +336,10 @@ def word_rnn_model(train_data,test_data,keep_probability):
     
     test_accuracy,entropy_cost = [],[]
     # Optimizer
-    entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=tf.one_hot(y_, MAX_LABEL), logits=logits))
+    entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_, logits=logits))
     train_op = tf.train.AdamOptimizer(learning_rate).minimize(entropy)
 
-    correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(tf.one_hot(y_,MAX_LABEL),1)), tf.float32)
+    correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1)),tf.float32)
     accuracy = tf.reduce_mean(correct_prediction)
 
     # training
@@ -386,11 +364,15 @@ def word_rnn_model(train_data,test_data,keep_probability):
     data.append(entropy_cost)
     return data
 
+def scale(data):
+    data_scaled = (data - np.mean(data, axis=0)) / np.std(data, axis=0)
+    return data_scaled
+
 def main():
     global no_words
     train_word, test_word, no_words= data_read_words()
     train_char, test_char = data_read_chars()
-
+    
     char_rnn_data_GRU = char_rnn_model(train_char,test_char,1)
     char_rnn_data_LSTM = char_rnn_model_LSTM(train_char,test_char,1)
     char_rnn_data_vanilla = char_rnn_model_vanillaRNN(train_char,test_char,1)
