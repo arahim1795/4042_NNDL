@@ -288,41 +288,41 @@ def import_data_export_graph(filenumber):
 
 
 def main():
-    # train_data = load_data("../Data/data_batch_1")
-    # # print(trainX.shape, trainY.shape)
+    train_data = load_data("../Data/data_batch_1")
+    # print(trainX.shape, trainY.shape)
 
-    # test_data = load_data("../Data/test_batch_trim")
-    # # print(testX.shape, testY.shape)
+    test_data = load_data("../Data/test_batch_trim")
+    # print(testX.shape, testY.shape)
 
-    # # scale data
-    # train_data[0] = (train_data[0] - np.min(train_data[0], axis=0)) / np.max(
-    #     train_data[0], axis=0
-    # )
+    # scale data
+    train_data[0] = (train_data[0] - np.min(train_data[0], axis=0)) / np.max(
+        train_data[0], axis=0
+    )
 
     num_optimisers = 4
-    # all_out = []
-    # all_highest_acc = []
-    # # determines optimiser type
-    # # - 0: gradient descent optimiser
-    # # - 1: momentum optimiser
-    # # - 2: RMSProp optimiser
-    # # - 3: adam optimiser
-    # for i in range(num_optimisers):
-    #     # determines dropout type
-    #     # - 0: 1.0
-    #     # - 1: 0.8
-    #     for j in range(len(keep_probability)):
-    #         # skip GradientDescentOptimiser + Dropout: 1.0 (from Q1)
-    #         if i == 0 and j == 0:
-    #             continue
-    #         raw_out, raw_high = graph(train_data, test_data, i, j)
-    #         all_out.append(raw_out)
-    #         all_highest_acc.append(raw_high)
+    all_out = []
+    all_highest_acc = []
+    # determines optimiser type
+    # - 0: gradient descent optimiser
+    # - 1: momentum optimiser
+    # - 2: RMSProp optimiser
+    # - 3: adam optimiser
+    for i in range(num_optimisers):
+        # determines dropout type
+        # - 0: 1.0
+        # - 1: 0.8
+        for j in range(len(keep_probability)):
+            # skip GradientDescentOptimiser + Dropout: 1.0 (from Q1)
+            if i == 0 and j == 0:
+                continue
+            raw_out, raw_high = graph(train_data, test_data, i, j)
+            all_out.append(raw_out)
+            all_highest_acc.append(raw_high)
 
-    # # export data set
-    # for i in range(len(all_out)):
-    #     export_to_file(all_out[i], str(i + 1))
-    #     export_to_file(all_highest_acc[i], str(i + 1) + "_max")
+    # export data set
+    for i in range(len(all_out)):
+        export_to_file(all_out[i], str(i + 1))
+        export_to_file(all_highest_acc[i], str(i + 1) + "_max")
 
     # plot graphs
     for i in range(num_optimisers * len(keep_probability)):

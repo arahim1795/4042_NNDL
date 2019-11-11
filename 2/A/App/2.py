@@ -275,7 +275,7 @@ def main():
     # plot max graph
     fig, ax = plt.subplots(figsize=(16, 8))
     ax.set_title("Performance Comparison")
-    
+
     ax.set_ylabel("Test Accuracy")
 
     labels = []

@@ -339,63 +339,63 @@ def import_data_export_graph(filenumber):
 
 
 def main():
-    # train_data = load_data("../Data/data_batch_1")
-    # # print(trainX.shape, trainY.shape)
+    train_data = load_data("../Data/data_batch_1")
+    # print(trainX.shape, trainY.shape)
 
-    # test_data = load_data("../Data/test_batch_trim")
-    # # print(testX.shape, testY.shape)
+    test_data = load_data("../Data/test_batch_trim")
+    # print(testX.shape, testY.shape)
 
-    # # scale data
-    # train_data[0] = (train_data[0] - np.min(train_data[0], axis=0)) / np.max(
-    #     train_data[0], axis=0
-    # )
+    # scale data
+    train_data[0] = (train_data[0] - np.min(train_data[0], axis=0)) / np.max(
+        train_data[0], axis=0
+    )
 
-    # test_data[0] = (test_data[0] - np.min(test_data[0], axis=0)) / np.max(
-    #     test_data[0], axis=0
-    # )
+    test_data[0] = (test_data[0] - np.min(test_data[0], axis=0)) / np.max(
+        test_data[0], axis=0
+    )
 
-    # # randomise patterns for test
-    # patterns = []
-    # indexes = []
-    # for i in range(2):
-    #     current_index = np.random.randint(low=0, high=len(test_data[0]))
-    #     indexes.append(current_index)
-    #     original = test_data[0][current_index]
-    #     patterns.append(np.reshape(original, [1, -1]))
+    # randomise patterns for test
+    patterns = []
+    indexes = []
+    for i in range(2):
+        current_index = np.random.randint(low=0, high=len(test_data[0]))
+        indexes.append(current_index)
+        original = test_data[0][current_index]
+        patterns.append(np.reshape(original, [1, -1]))
 
-    #     # export picture
-    #     plt.figure()
-    #     plt.gray()
-    #     original_show = original.reshape(NUM_CHANNELS[0], IMG_SIZE, IMG_SIZE).transpose(
-    #         1, 2, 0
-    #     )
-    #     plt.axis("off")
-    #     plt.imshow(original_show)
-    #     plt.savefig("../Out/1_pattern_" + str(i) + ".png")
-    #     plt.close()
+        # export picture
+        plt.figure()
+        plt.gray()
+        original_show = original.reshape(NUM_CHANNELS[0], IMG_SIZE, IMG_SIZE).transpose(
+            1, 2, 0
+        )
+        plt.axis("off")
+        plt.imshow(original_show)
+        plt.savefig("../Out/1_pattern_" + str(i) + ".png")
+        plt.close()
 
-    # with open("../Out/1_indexes.csv", "w") as f:
-    #     for index in indexes:
-    #         f.write(str(index) + "\n")
+    with open("../Out/1_indexes.csv", "w") as f:
+        for index in indexes:
+            f.write(str(index) + "\n")
 
     num_activations = 5
-    # all_out = []
-    # all_highest_acc = []
-    # # activation functions
-    # # 0 - Linear
-    # # 1 - Sigmoid
-    # # 2 - ReLu
-    # # 3 - ReLu6
-    # # 4 - Hyperbolic Tangent
-    # for i in range(num_activations):
-    #     raw_out, raw_high = graph(train_data, test_data, i, patterns)
-    #     all_out.append(raw_out)
-    #     all_highest_acc.append(raw_high)
+    all_out = []
+    all_highest_acc = []
+    # activation functions
+    # 0 - Linear
+    # 1 - Sigmoid
+    # 2 - ReLu
+    # 3 - ReLu6
+    # 4 - Hyperbolic Tangent
+    for i in range(num_activations):
+        raw_out, raw_high = graph(train_data, test_data, i, patterns)
+        all_out.append(raw_out)
+        all_highest_acc.append(raw_high)
 
-    # # export data set
-    # for i in range(len(all_out)):
-    #     export_to_file(all_out[i], str(i))
-    #     export_to_file(all_highest_acc[i], str(i) + "_max")
+    # export data set
+    for i in range(len(all_out)):
+        export_to_file(all_out[i], str(i))
+        export_to_file(all_highest_acc[i], str(i) + "_max")
 
     for i in range(num_activations):
         import_data_export_graph(i)
