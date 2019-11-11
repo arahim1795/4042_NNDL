@@ -18,7 +18,9 @@
 
 ### Initial
 
-1. Download and Install Python
+1. Download and Install
+   1. Python
+   2. Required Applications for GPU Support: [link](https://www.tensorflow.org/install/gpu)
 2. Navigate to your Python installation directory and copy path
 3. Open _cmd_ in administrator mode
 4. Input `cd <paste copied path>`
@@ -36,9 +38,11 @@
 2. Copy path to cloned/downloaded project directory after successful clone/download
 3. Input `cd <path to cloned/download project path>`
 4. Input `pipenv install numpy scipy matplotlib==3.1.0 scikit-learn`
-5. Input `pipenv install tensorflow==1.14`
+5. Input `pipenv install tensorflow==1.15`
 6. Input `pipenv install tqdm colorama`
 
 ## Execution
 
-1. To run, input `pipenv run python <file>.py`
+1. Input `pipenv shell` to activate python environment
+2. Navigate to App directory of respective parts (i.e. A or B)
+3. To run, input `python <filename>.py`
