@@ -5,6 +5,6 @@ Pipfile.lock
 1/B/Data/*
 !1/B/Data/prepare_data.py
 2/A/Data/*
-!2/A/Data/prepare_data.py
+!2/A/Data/placeholder.txt
 2/B/Data/*
 !2/B/Data/prepare_data.py
