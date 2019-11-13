@@ -414,17 +414,17 @@ def main():
 
     fig3 = plt.figure(figsize=(16,8))
     for i in range(8):
-        plt.plot(range(epochs),time_list[i],label="Time taken per epoch for "+str(time_list[i]))
+        plt.plot(range(epochs),time_list[i],label="Time taken per epoch for "+str(name_list[i]))
     plt.xlabel("Epochs")
     plt.ylabel("Time taken per epoch")
     plt.legend()
     fig3.savefig("../Out/B5_Time.png")
 
     with open("../Out/5.csv", "w") as f:
-        f.write("type,epoch,test accuracy,entropy_cost\n")
+        f.write("type,epoch,test accuracy,entropy cost,time taken per epoch\n")
         for i in range(8):
             for e in range(epochs):
-                f.write("%s,%s,%s,%s\n" % (name_list[i],str(e), str(accuracy_list[i][e]), str(entropy_list[i][e])))
+                f.write("%s,%s,%s,%s,%s\n" % (name_list[i],str(e), str(accuracy_list[i][e]), str(entropy_list[i][e]),str(time_list[i][e])))
 
 if __name__ == '__main__':
     main()

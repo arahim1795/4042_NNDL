@@ -286,7 +286,7 @@ def word_rnn_model_LSTM_2layer(train_data,test_data,keep_probability):
     data.append(entropy_cost)
     return data
 
-def char_rnn_model(train_data,test_data,keep_probability):
+def char_rnn_model_vanillaRNN(train_data,test_data,keep_probability):
     # Create the model
     x = tf.placeholder(tf.int64, [None, MAX_DOCUMENT_LENGTH])
     y_ = tf.placeholder(tf.int64)
@@ -297,7 +297,7 @@ def char_rnn_model(train_data,test_data,keep_probability):
     inputs = tf.unstack(input_layer,axis=1)
 
     #hidden layer
-    cell = tf.nn.rnn_cell.GRUCell(HIDDEN_SIZE) 
+    cell = tf.nn.rnn_cell.BasicRNNCell(HIDDEN_SIZE) 
     _, encoding = tf.nn.static_rnn(cell, inputs, dtype=tf.float32)
     dropped = tf.nn.dropout(encoding, keep_probability)  # DROP-OUT here
     #output layer
@@ -334,7 +334,56 @@ def char_rnn_model(train_data,test_data,keep_probability):
     data.append(entropy_cost)
     return data
 
-def word_rnn_model(train_data,test_data,keep_probability):
+def char_rnn_model_LSTM(train_data,test_data,keep_probability):
+    # Create the model
+    x = tf.placeholder(tf.int64, [None, MAX_DOCUMENT_LENGTH])
+    y_ = tf.placeholder(tf.int64)
+    
+    #input layer
+    input_layer = tf.reshape(
+        tf.one_hot(x, 256), [-1, MAX_DOCUMENT_LENGTH, MAX_CHAR])
+    inputs = tf.unstack(input_layer,axis=1)
+
+    #hidden layer
+    cell = tf.nn.rnn_cell.BasicLSTMCell(HIDDEN_SIZE) 
+    _, encoding = tf.nn.static_rnn(cell, inputs, dtype=tf.float32)
+    encoding = encoding[-1]
+    dropped = tf.nn.dropout(encoding, keep_probability)  # DROP-OUT here
+    #output layer
+    logits = tf.layers.dense(dropped, MAX_LABEL, activation=None)
+
+    test_accuracy,entropy_cost = [],[]
+    # Optimizer
+    entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_, logits=logits))
+    train_op = tf.train.AdamOptimizer(learning_rate).minimize(entropy)
+
+    correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1)),tf.float32)
+    accuracy = tf.reduce_mean(correct_prediction)
+
+
+    # training
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+
+        for e in tqdm(range(epochs)):
+            idx = np.arange(len(train_data[0]))
+            np.random.shuffle(idx)
+            trainX, trainY = train_data[0][idx], train_data[1][idx] #shuffle
+            # Mini-batch training
+            for start, end in zip(range(0, len(trainX), batch_size), range(batch_size, len(trainX), batch_size)):
+                sess.run(train_op, {x: trainX[start:end], y_: trainY[start:end]})
+            # evaluation    
+            acc_,loss_ = sess.run([accuracy, entropy], {x: test_data[0], y_: test_data[1]})
+            test_accuracy.append(acc_)
+            entropy_cost.append(entropy.eval(feed_dict={x: train_data[0], y_: train_data[1]}))
+        sess.close()
+    tf.reset_default_graph()
+    data = []
+    data.append(test_accuracy)
+    data.append(entropy_cost)
+    return data
+
+def word_rnn_model_vanillaRNN(train_data,test_data,keep_probability):
     # Create the model
     x = tf.placeholder(tf.int64, [None, MAX_DOCUMENT_LENGTH])
     y_ = tf.placeholder(tf.int64)
@@ -346,7 +395,7 @@ def word_rnn_model(train_data,test_data,keep_probability):
     input_layer = tf.reshape(word_vectors, [-1, MAX_DOCUMENT_LENGTH, EMBEDDED_SIZE])
 
     #hidden layer
-    cell = tf.nn.rnn_cell.GRUCell(HIDDEN_SIZE) 
+    cell = tf.nn.rnn_cell.BasicRNNCell(HIDDEN_SIZE) 
     _, encoding = tf.nn.static_rnn(cell, word_list, dtype=tf.float32)
     dropped = tf.nn.dropout(encoding, keep_probability)  # DROP-OUT here
     #output layer
@@ -382,39 +431,99 @@ def word_rnn_model(train_data,test_data,keep_probability):
     data.append(entropy_cost)
     return data
 
+def word_rnn_model_LSTM(train_data,test_data,keep_probability):
+    # Create the model
+    x = tf.placeholder(tf.int64, [None, MAX_DOCUMENT_LENGTH])
+    y_ = tf.placeholder(tf.int64)
+    
+    #input layer
+    word_vectors = tf.contrib.layers.embed_sequence(
+        x, vocab_size=no_words, embed_dim=EMBEDDED_SIZE)
+    word_list = tf.unstack(word_vectors, axis=1)
+    input_layer = tf.reshape(word_vectors, [-1, MAX_DOCUMENT_LENGTH, EMBEDDED_SIZE])
+
+    #hidden layer
+    cell = tf.nn.rnn_cell.BasicLSTMCell(HIDDEN_SIZE)
+    _, encoding = tf.nn.static_rnn(cell, word_list, dtype=tf.float32)
+    encoding = encoding[-1]
+    dropped = tf.nn.dropout(encoding, keep_probability)  # DROP-OUT here
+    #output layer
+    logits = tf.layers.dense(dropped, MAX_LABEL, activation=None)
+    # Currently size 256 by 15
+    test_accuracy,entropy_cost = [],[]
+    # Optimizer
+    entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=tf.one_hot(y_, MAX_LABEL), logits=logits))
+    train_op = tf.train.AdamOptimizer(learning_rate).minimize(entropy)
+
+    correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(tf.one_hot(y_,MAX_LABEL),1)), tf.float32)
+    accuracy = tf.reduce_mean(correct_prediction)
+
+    # training
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+
+        for e in tqdm(range(epochs)):
+            idx = np.arange(len(train_data[0]))
+            np.random.shuffle(idx)
+            trainX, trainY = train_data[0][idx], train_data[1][idx] #shuffle
+            # Mini-batch training
+            for start, end in zip(range(0, len(trainX), batch_size), range(batch_size, len(trainX), batch_size)):
+                sess.run(train_op, {x: trainX[start:end], y_: trainY[start:end]})
+            # evaluation    
+            acc_,loss_ = sess.run([accuracy, entropy], {x: test_data[0], y_: test_data[1]})
+            test_accuracy.append(acc_)
+            entropy_cost.append(entropy.eval(feed_dict={x: train_data[0], y_: train_data[1]}))
+        sess.close()
+    tf.reset_default_graph()
+    data = []
+    data.append(test_accuracy)
+    data.append(entropy_cost)
+    return data
+
 def main():
     global no_words
     train_word, test_word, no_words= data_read_words()
     train_char, test_char = data_read_chars()
 
-    char_rnn_data = char_rnn_model(train_char,test_char,1)
+    char_rnn_data_vanilla = char_rnn_model_vanillaRNN(train_char,test_char,1)
     char_rnn_data_vanilla_2layer = char_rnn_model_vanilla_2layer(train_char,test_char,1)
+    char_rnn_data_LSTM = char_rnn_model_LSTM(train_char,test_char,1)
     char_rnn_data_LSTM_2layer = char_rnn_model_LSTM_2layer(train_char,test_char,1)
-    word_rnn_data = word_rnn_model(train_word,test_word,1)
+    
+    word_rnn_data_vanilla = word_rnn_model_vanillaRNN(train_word,test_word,1)
     word_rnn_data_vanilla_2layer = word_rnn_model_vanilla_2layer(train_word,test_word,1)
+    word_rnn_data_LSTM = word_rnn_model_LSTM(train_word,test_word,1)
     word_rnn_data_LSTM_2layer = word_rnn_model_LSTM_2layer(train_word,test_word,1)
 
     accuracy_list,entropy_list = [],[]
-    accuracy_list.append(char_rnn_data[0])
+
+    accuracy_list.append(char_rnn_data_vanilla[0])
     accuracy_list.append(char_rnn_data_vanilla_2layer[0])
+    accuracy_list.append(char_rnn_data_LSTM[0])
     accuracy_list.append(char_rnn_data_LSTM_2layer[0])
-    accuracy_list.append(word_rnn_data[0])
+
+    accuracy_list.append(word_rnn_data_vanilla[0])
     accuracy_list.append(word_rnn_data_vanilla_2layer[0])
+    accuracy_list.append(word_rnn_data_LSTM[0])
     accuracy_list.append(word_rnn_data_LSTM_2layer[0])
 
-    entropy_list.append(char_rnn_data[1])
+    entropy_list.append(char_rnn_data_vanilla[1])
     entropy_list.append(char_rnn_data_vanilla_2layer[1])
+    entropy_list.append(char_rnn_data_LSTM[1])
     entropy_list.append(char_rnn_data_LSTM_2layer[1])
-    entropy_list.append(word_rnn_data[1])
+
+
+    entropy_list.append(word_rnn_data_vanilla[1])
     entropy_list.append(word_rnn_data_vanilla_2layer[1])
+    entropy_list.append(word_rnn_data_LSTM[1])
     entropy_list.append(word_rnn_data_LSTM_2layer[1])
 
 
 
-    name_list = ["Char RNN Original", "Char RNN 2 Layer Vanilla","Char RNN 2 Layer LSTM", "Word RNN Original","Word RNN 2 Layer Vanilla","Word RNN 2 Layer LSTM"]
+    name_list = ["Char RNN Vanilla","Char RNN 2 Layer Vanilla","Char RNN LSTM","Char RNN 2 Layer LSTM", "Word RNN Vanilla","Word RNN 2 Layer Vanilla","Word RNN LSTM","Word RNN 2 Layer LSTM"]
 
     fig1 = plt.figure(figsize=(16,8))
-    for i in range(6):
+    for i in range(8):
         plt.plot(range(epochs),entropy_list[i],label="Entropy Cost for " + str(name_list[i]))
     plt.xlabel("Epochs")  
     plt.ylabel("Entropy Cost")
@@ -422,16 +531,32 @@ def main():
     fig1.savefig("../Out/B6b_Cost.png")
 
     fig2 = plt.figure(figsize=(16,8))
-    for i in range(6):
+    for i in range(8):
         plt.plot(range(epochs),accuracy_list[i],label="Test Accuracy for " + str(name_list[i]))
     plt.xlabel("Epochs")
     plt.ylabel("Train Accuracy")
     plt.legend()
     fig2.savefig("../Out/B6b_Accuracy.png")
 
+    fig3 = plt.figure(figsize=(16,8))
+    for i in range(4):
+        plt.plot(range(epochs),accuracy_list[i],label="Test Accuracy for " + str(name_list[i]))
+    plt.xlabel("Epochs")  
+    plt.ylabel("Train Accuracy")
+    plt.legend()
+    fig3.savefig("../Out/B6b_Char_Accuracy.png")
+
+    fig4 = plt.figure(figsize=(16,8))
+    for i in range(4,8):
+        plt.plot(range(epochs),accuracy_list[i],label="Test Accuracy for " + str(name_list[i]))
+    plt.xlabel("Epochs")  
+    plt.ylabel("Train Accuracy")
+    plt.legend()
+    fig4.savefig("../Out/B6b_Word_Accuracy.png")
+
     with open("../Out/6b.csv", "w") as f:
         f.write("type,epoch,test accuracy,entropy_cost\n")
-        for i in range(6):
+        for i in range(8):
             for e in range(epochs):
                 f.write("%s,%s,%s,%s\n" % (name_list[i],str(e), str(accuracy_list[i][e]), str(entropy_list[i][e])))
 

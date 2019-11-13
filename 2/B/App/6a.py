@@ -427,6 +427,22 @@ def main():
     plt.legend()
     fig2.savefig("../Out/B6a_Accuracy.png")
 
+    fig3 = plt.figure(figsize=(16,8))
+    for i in range(3):
+        plt.plot(range(epochs),accuracy_list[i],label="Test Accuracy for " + str(name_list[i]))
+    plt.xlabel("Epochs")  
+    plt.ylabel("Train Accuracy")
+    plt.legend()
+    fig3.savefig("../Out/B6a_Char_Accuracy.png")
+
+    fig4 = plt.figure(figsize=(16,8))
+    for i in range(3,6):
+        plt.plot(range(epochs),accuracy_list[i],label="Test Accuracy for " + str(name_list[i]))
+    plt.xlabel("Epochs")  
+    plt.ylabel("Train Accuracy")
+    plt.legend()
+    fig4.savefig("../Out/B6a_Word_Accuracy.png")
+
     with open("../Out/6a.csv", "w") as f:
         f.write("type,epoch,test accuracy,entropy_cost\n")
         for i in range(6):

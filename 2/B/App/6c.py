@@ -531,7 +531,7 @@ def main():
     entropy_list.append(word_rnn_model_vanilla_2layer_data[1])
     entropy_list.append(word_rnn_model_vanilla_2layer_gradient_clipping_data[1])
 
-    name_list = ["LSTM Char RNN","LSTM Char RNN w/ GC","Vanilla Char RNN","Vanilla Char RNN w/ GC","LSTM Word RNN","LSTM Word RNN w/ GD","Vanilla Word RNN","Vanilla Word RNN w/ GC"]
+    name_list = ["Char RNN 2 Layer LSTM","Char RNN 2 Layer LSTM w/ GC","Char RNN 2 Layer Vanilla","Char RNN 2 Layer Vanilla w/ GC","Word RNN 2 Layer LSTM","Word RNN 2 Layer LSTM w/ GC","Word RNN 2 Layer Vanilla","Word RNN 2 Layer Vanilla w/ GC"]
 
     fig1 = plt.figure(figsize=(16,8))
     for i in range(8):
@@ -543,11 +543,27 @@ def main():
 
     fig2 = plt.figure(figsize=(16,8))
     for i in range(8):
-        plt.plot(range(epochs),accuracy_list[i],label="Test Accuracy for " + str(name_list[i]))
+        plt.plot(range(epochs),accuracy_list[i],label="Test Accuracy for " + str(name_list[i])) 
     plt.xlabel("Epochs")
     plt.ylabel("Train Accuracy")
     plt.legend()
     fig2.savefig("../Out/B6c_Accuracy.png")
+
+    fig3 = plt.figure(figsize=(16,8))
+    for i in range(4):
+        plt.plot(range(epochs),accuracy_list[i],label="Test Accuracy for " + str(name_list[i]))
+    plt.xlabel("Epochs")  
+    plt.ylabel("Train Accuracy")
+    plt.legend()
+    fig3.savefig("../Out/B6c_Char_Accuracy.png")
+
+    fig4 = plt.figure(figsize=(16,8))
+    for i in range(4,8):
+        plt.plot(range(epochs),accuracy_list[i],label="Test Accuracy for " + str(name_list[i]))
+    plt.xlabel("Epochs")  
+    plt.ylabel("Train Accuracy")
+    plt.legend()
+    fig4.savefig("../Out/B6c_Word_Accuracy.png")
 
     with open("../Out/6c.csv", "w") as f:
         f.write("type,epoch,test accuracy,entropy_cost\n")
