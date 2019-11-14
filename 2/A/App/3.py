@@ -257,7 +257,6 @@ def import_data_export_graph(filenumber):
                 else:
                     data_test_acc.append(float(data[i][j]))
 
-    fig, ax = plt.subplots(figsize=(16, 8))
     title = ""
     if filenumber < 2:
         title = "Gradient Descent"
@@ -271,6 +270,7 @@ def import_data_export_graph(filenumber):
     if (filenumber % 2) == 1:
         title += " w Dropout"
 
+    fig, ax = plt.subplots(figsize=(16, 8))
     ax.set_title(title)
     ax.set_ylabel("Test Accuracy")
     ax.set_xlabel("Epochs")
@@ -280,7 +280,98 @@ def import_data_export_graph(filenumber):
     #     ax.text(i, value, str(value), ha="center", va="bottom")
     ax.legend()
     fig.savefig(
-        "../Out/3_" + str(filenumber) + "_plot.png",
+        "../Out/3_" + str(filenumber) + "_test_acc.png",
+        bbox_inches="tight",
+        pad_inches=0.05,
+    )
+    plt.close()
+
+    fig, ax = plt.subplots(figsize=(16, 8))
+    ax.set_title(title)
+    ax.set_ylabel("Train Cost")
+    ax.set_xlabel("Epochs")
+
+    ax.plot(data_epoch, data_train_cost, label="Train Cost", color="#0000FF")
+    # for i, value in enumerate(max_data[3]):
+    #     ax.text(i, value, str(value), ha="center", va="bottom")
+    ax.legend()
+    fig.savefig(
+        "../Out/3_" + str(filenumber) + "_train_cost.png",
+        bbox_inches="tight",
+        pad_inches=0.05,
+    )
+    plt.close()
+
+
+def export_dropout_compare(number_1, number_2, filename):
+    data_epoch_1 = []
+    data_train_acc_1 = []
+    data_train_cost_1 = []
+    data_test_acc_1 = []
+
+    with open("../Out/3_" + str(number_1) + "_output.csv", "r") as f:
+        data = f.read().split("\n")[1:-1]
+        for i in range(len(data)):
+            data[i] = data[i].split(",")
+            for j in range(len(data[i])):
+                if j == 0:
+                    data_epoch_1.append(int(data[i][j]))
+                elif j == 1:
+                    data_train_acc_1.append(float(data[i][j]))
+                elif j == 2:
+                    data_train_cost_1.append(float(data[i][j]))
+                else:
+                    data_test_acc_1.append(float(data[i][j]))
+
+    data_epoch_2 = []
+    data_train_acc_2 = []
+    data_train_cost_2 = []
+    data_test_acc_2 = []
+
+    with open("../Out/3_" + str(number_2) + "_output.csv", "r") as f:
+        data = f.read().split("\n")[1:-1]
+        for i in range(len(data)):
+            data[i] = data[i].split(",")
+            for j in range(len(data[i])):
+                if j == 0:
+                    data_epoch_2.append(int(data[i][j]))
+                elif j == 1:
+                    data_train_acc_2.append(float(data[i][j]))
+                elif j == 2:
+                    data_train_cost_2.append(float(data[i][j]))
+                else:
+                    data_test_acc_2.append(float(data[i][j]))
+
+    title = filename
+    fig, ax = plt.subplots(figsize=(16, 8))
+    ax.set_title(title)
+    ax.set_ylabel("Test Accuracy")
+    ax.set_xlabel("Epochs")
+
+    ax.plot(data_epoch_2, data_test_acc_1, label="without Dropout", color="#0000FF")
+    ax.plot(data_epoch_2, data_test_acc_2, label="with Dropout", color="#FF0000")
+    # for i, value in enumerate(max_data[3]):
+    #     ax.text(i, value, str(value), ha="center", va="bottom")
+    ax.legend()
+    fig.savefig(
+        "../Out/3_" + str(number_1) + "-" + str(number_2) + "_test_acc.png",
+        bbox_inches="tight",
+        pad_inches=0.05,
+    )
+    plt.close()
+
+    fig, ax = plt.subplots(figsize=(16, 8))
+    ax.set_title(title)
+    ax.set_ylabel("Train Cost")
+    ax.set_xlabel("Epochs")
+
+    ax.plot(data_epoch_1, data_train_cost_1, label="without Dropout", color="#0000FF")
+    ax.plot(data_epoch_2, data_train_cost_2, label="with Dropout", color="#FF0000")
+    # for i, value in enumerate(max_data[3]):
+    #     ax.text(i, value, str(value), ha="center", va="bottom")
+    ax.legend()
+    fig.savefig(
+        "../Out/3_" + str(number_1) + "-" + str(number_2) + "_train_cost.png",
         bbox_inches="tight",
         pad_inches=0.05,
     )
@@ -312,21 +403,23 @@ def main():
         # - 0: 1.0
         # - 1: 0.8
         for j in range(len(keep_probability)):
-            # skip GradientDescentOptimiser + Dropout: 1.0 (from Q1)
-            if i == 0 and j == 0:
-                continue
             raw_out, raw_high = graph(train_data, test_data, i, j)
             all_out.append(raw_out)
             all_highest_acc.append(raw_high)
 
     # export data set
     for i in range(len(all_out)):
-        export_to_file(all_out[i], str(i + 1))
-        export_to_file(all_highest_acc[i], str(i + 1) + "_max")
+        export_to_file(all_out[i], str(i))
+        export_to_file(all_highest_acc[i], str(i) + "_max")
 
     # plot graphs
     for i in range(num_optimisers * len(keep_probability)):
         import_data_export_graph(i)
+
+    export_dropout_compare(0, 1, "Gradient Descent")
+    export_dropout_compare(2, 3, "Gradient Descent w Momentum")
+    export_dropout_compare(4, 5, "RMSProp")
+    export_dropout_compare(6, 7, "Adam")
 
     # plot max graph
     num_params = len(keep_probability) * num_optimisers

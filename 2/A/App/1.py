@@ -331,7 +331,23 @@ def import_data_export_graph(filenumber):
     #     ax.text(i, value, str(value), ha="center", va="bottom")
     ax.legend()
     fig.savefig(
-        "../Out/1_" + str(filenumber) + "_plot.png",
+        "../Out/1_" + str(filenumber) + "_test_acc.png",
+        bbox_inches="tight",
+        pad_inches=0.05,
+    )
+    plt.close()
+
+    fig, ax = plt.subplots(figsize=(16, 8))
+    ax.set_title(title)
+    ax.set_ylabel("Train Cost")
+    ax.set_xlabel("Epochs")
+
+    ax.plot(data_epoch, data_train_cost, label="Train Cost", color="#0000FF")
+    # for i, value in enumerate(max_data[3]):
+    #     ax.text(i, value, str(value), ha="center", va="bottom")
+    ax.legend()
+    fig.savefig(
+        "../Out/1_" + str(filenumber) + "_train_cost.png",
         bbox_inches="tight",
         pad_inches=0.05,
     )
